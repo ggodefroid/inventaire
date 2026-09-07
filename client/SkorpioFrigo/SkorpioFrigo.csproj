@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Projet Visual Studio 2008 pour .NET Compact Framework 2.0, cible Windows CE 5.0.
+
+  Si Visual Studio refuse d'ouvrir ce fichier (les GUID de plateforme dependent
+  des SDK installes sur la machine), la voie la plus sure est :
+
+      Fichier > Nouveau > Projet > Smart Device
+        > Windows CE > Device Application
+        > .NET Compact Framework 2.0
+
+  puis "Ajouter un element existant" sur les .cs de ce dossier. Le resultat est
+  identique ; ce fichier ne fait que gagner cette etape quand les GUID collent.
+-->
+<Project DefaultTargets="Build" ToolsVersion="3.5"
+         xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Release</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.21022</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{7B1E9C42-3D5A-4F18-9E27-0C6A1B8D4F30}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>SkorpioFrigo</RootNamespace>
+    <AssemblyName>SkorpioFrigo</AssemblyName>
+    <ProjectTypeGuids>{4D628B5B-2FBC-4AA6-8C16-197242AEB884};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+    <PlatformFamilyName>WindowsCE</PlatformFamilyName>
+    <PlatformID>E2BECB1F-8C8C-41BA-B736-9BE7D946A398</PlatformID>
+    <OSVersion>5.0</OSVersion>
+    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+    <NativePlatformName>Windows CE</NativePlatformName>
+    <DeployDirSuffix>SkorpioFrigo</DeployDirSuffix>
+    <NoStdLib>true</NoStdLib>
+    <NoConfig>true</NoConfig>
+    <FileAlignment>512</FileAlignment>
+    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE;PocketPC</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <DebugType>none</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="mscorlib" />
+    <Reference Include="System" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Dates.cs" />
+    <Compile Include="MainForm.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="Protocol.cs" />
+    <Compile Include="ScanBuffer.cs" />
+    <Compile Include="Settings.cs" />
+    <Compile Include="SettingsForm.cs" />
+    <Compile Include="TextForm.cs" />
+    <Compile Include="Uploader.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CompactFramework.CSharp.targets" />
+</Project>
