@@ -1,0 +1,15 @@
+# Produits de compilation
+/dist/
+/frontend/build/Version.cs
+
+# Donnees du serveur
+/backend/donnees/
+
+# Reglages de production : contient l'UID, les ports et le fuseau de la
+# machine. .env.exemple, lui, est versionne.
+/.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/

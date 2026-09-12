@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+
+  tests:
+    name: Tests (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -r requirements.txt
+      - run: python -m unittest discover -s tests -t .
+
+  production:
+    name: Pile de production
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Le parcours d'un depot fraichement clone : ni .env, ni donnees, ni
+      # dist. C'est demarrer.sh qui doit tout preparer.
+      - name: ./demarrer.sh
+        run: ./demarrer.sh
+
+      - name: Le serveur ecrit, la vitrine relit
+        run: |
+          curl -fsS --output /dev/null \
+            "http://127.0.0.1:8080/api/ajouter?code=3017620422003&qte=2&peremption=2030-01-01"
+          sleep 3
+          curl -fsS -o etat.json http://127.0.0.1:8081/api/etat
+          python3 -c "import json; u = json.load(open('etat.json'))['compteurs']['unites']; print('unites vues par la vitrine :', u); raise SystemExit(0 if u >= 2 else 1)"
+
+      - name: Arret propre
+        run: |
+          docker compose stop
+          for service in frigo-serveur frigo-vitrine; do
+            code="$(docker inspect -f '{{.State.ExitCode}}' "$service")"
+            echo "$service : exit $code"
+            [ "$code" = 0 ]
+          done
+
+      - name: Journaux en cas d'echec
+        if: failure()
+        run: docker compose logs

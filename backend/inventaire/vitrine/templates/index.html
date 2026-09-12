@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Frigo · poste de contrôle</title>
+<meta name="description" content="Inventaire d'un réfrigérateur relevé au terminal code-barres. {{ unites }} unités, {{ references }} références, en direct.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#04070d">
+<meta property="og:title" content="Frigo · poste de contrôle">
+<meta property="og:description" content="{{ unites }} unités, {{ references }} références. Relevé en direct depuis un terminal Datalogic Skorpio de 2005.">
+<meta property="og:type" content="website">
+<link rel="icon" href="/favicon.ico">
+<link rel="stylesheet" href="{{ url_for('static', filename='vitrine.css') }}">
+</head>
+<body data-version="{{ version }}">
+
+<div class="grain" aria-hidden="true"></div>
+<div class="lignes" aria-hidden="true"></div>
+
+<header class="entete">
+  <a class="marque" href="#bord">
+    <span class="marque-glyphe" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="2"/><path d="M6 10.5h12"/><path d="M9 6v2.6M9 13v2.6"/></svg>
+    </span>
+    <span class="marque-texte">
+      <b>FRIGO</b>
+      <small>poste de contrôle</small>
+    </span>
+  </a>
+
+  <form class="recherche" role="search" onsubmit="return false">
+    <svg class="loupe" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M15.5 15.5L21 21"/></svg>
+    <input id="q" type="search" placeholder="chercher un produit, une marque, un code" autocomplete="off" spellcheck="false" aria-label="Rechercher">
+    <kbd>/</kbd>
+  </form>
+
+  <div class="etat-liaison" id="liaison" title="liaison temps réel">
+    <span class="point"></span>
+    <span class="etat-texte">liaison</span>
+    <span class="revision" id="revision">r0</span>
+  </div>
+
+  <time class="horloge" id="horloge">--:--:--</time>
+</header>
+
+<nav class="onglets" id="onglets">
+  <button class="onglet actif" data-vue="bord"><span>TABLEAU</span></button>
+  <button class="onglet" data-vue="frigo"><span>FRIGO</span></button>
+  <button class="onglet" data-vue="stock"><span>STOCK</span><i class="pastille" id="pastille-stock"></i></button>
+  <button class="onglet" data-vue="flux"><span>FLUX</span></button>
+  <button class="onglet" data-vue="machine"><span>MACHINE</span></button>
+</nav>
+
+<main>
+
+  <!-- ========================================================= TABLEAU -->
+  <section class="vue active" id="vue-bord">
+
+    <div class="bandeau" id="bandeau"></div>
+
+    <h2 class="titre-section">
+      <span class="num">01</span> Indicateurs clés
+      <small>10 KPI, formule affichée sous chaque valeur</small>
+    </h2>
+    <div class="grille-kpi" id="kpis"></div>
+
+    <h2 class="titre-section">
+      <span class="num">02</span> Répartitions
+      <small>en unités de stock</small>
+    </h2>
+    <div class="grille-donuts" id="donuts"></div>
+
+    <h2 class="titre-section">
+      <span class="num">03</span> Séries
+      <small>reconstituées depuis le journal des mouvements</small>
+    </h2>
+    <div class="grille-series">
+      <article class="carte large" id="carte-charge">
+        <header><h3>Charge du frigo</h3><small>60 jours, en unités</small></header>
+        <div class="toile" id="graphe-charge"></div>
+      </article>
+      <article class="carte large" id="carte-mouvements">
+        <header><h3>Mouvements</h3><small>30 jours, ajouts et retraits</small></header>
+        <div class="toile" id="graphe-mouvements"></div>
+      </article>
+      <article class="carte large">
+        <header><h3>Horizon de péremption</h3><small>45 jours à venir</small></header>
+        <div class="toile" id="graphe-horizon"></div>
+      </article>
+      <article class="carte">
+        <header><h3>Heures de scan</h3><small>journée complète</small></header>
+        <div class="toile" id="graphe-heures"></div>
+      </article>
+      <article class="carte">
+        <header><h3>Jours de la semaine</h3><small>tout l'historique</small></header>
+        <div class="toile" id="graphe-semaine"></div>
+      </article>
+      <article class="carte large">
+        <header><h3>Grille d'activité</h3><small>jour x heure, tout l'historique</small></header>
+        <div class="toile" id="graphe-grille"></div>
+      </article>
+    </div>
+
+    <h2 class="titre-section">
+      <span class="num">04</span> Nutrition du stock
+      <small>valeurs pour 100 g projetées sur les quantités réelles</small>
+    </h2>
+    <div class="grille-nutrition">
+      <article class="carte" id="carte-niveaux">
+        <header><h3>Jauges Open Food Facts</h3><small>moyenne pondérée, 1 bas / 3 haut</small></header>
+        <div class="toile" id="graphe-niveaux"></div>
+      </article>
+      <article class="carte large">
+        <header><h3>Chiffres exacts</h3><small>sur la part du stock dont le conditionnement est lisible</small></header>
+        <div class="cartouches" id="chiffres"></div>
+      </article>
+    </div>
+
+    <h2 class="titre-section">
+      <span class="num">05</span> Classements
+      <small>pondérés par le nombre d'unités</small>
+    </h2>
+    <div class="grille-barres" id="barres"></div>
+
+    <h2 class="titre-section">
+      <span class="num">06</span> Curiosités
+      <small>exact, vérifiable, sans le moindre intérêt</small>
+    </h2>
+    <div class="cartouches curieux" id="curiosites"></div>
+
+  </section>
+
+  <!-- =========================================================== FRIGO -->
+  <section class="vue" id="vue-frigo">
+    <div class="frigo-cadre">
+      <div class="frigo-toile" id="frigo"></div>
+      <aside class="frigo-legende">
+        <h3>Rangement</h3>
+        <p class="note">Position fixée par le code-barres, pas par le vrai frigo. Clic sur un article pour sa fiche.</p>
+        <ul class="legende" id="legende-frigo"></ul>
+        <div class="frigo-compteurs" id="frigo-compteurs"></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- =========================================================== STOCK -->
+  <section class="vue" id="vue-stock">
+    <div class="filtres" id="filtres">
+      <div class="puces" id="puces-urgence"></div>
+      <div class="tri">
+        <label for="tri">tri</label>
+        <select id="tri">
+          <option value="peremption">péremption</option>
+          <option value="nom">nom</option>
+          <option value="quantite">quantité</option>
+          <option value="kcal">densité calorique</option>
+          <option value="nutriscore">Nutri-Score</option>
+          <option value="nova">NOVA</option>
+          <option value="masse">masse</option>
+          <option value="recent">ajout récent</option>
+        </select>
+        <button id="sens" class="mini" title="inverser le sens">↑</button>
+      </div>
+      <span class="compte" id="compte-stock"></span>
+    </div>
+    <div class="grille-stock" id="stock"></div>
+  </section>
+
+  <!-- ============================================================ FLUX -->
+  <section class="vue" id="vue-flux">
+    <div class="grille-flux">
+      <article class="carte large">
+        <header><h3>Journal des mouvements</h3><small>du plus récent au plus ancien</small></header>
+        <ol class="journal" id="journal"></ol>
+      </article>
+      <article class="carte">
+        <header><h3>Ce qui presse</h3><small>par échéance</small></header>
+        <ul class="urgents" id="urgents"></ul>
+      </article>
+    </div>
+  </section>
+
+  <!-- ========================================================= MACHINE -->
+  <section class="vue" id="vue-machine">
+    <div class="grille-machine">
+      <article class="carte">
+        <header><h3>Chaîne</h3><small>du carton au navigateur</small></header>
+        <pre class="schema" id="schema"></pre>
+      </article>
+      <article class="carte">
+        <header><h3>Ce processus</h3><small>site public, lecture seule</small></header>
+        <dl class="paires" id="machine"></dl>
+      </article>
+      <article class="carte large">
+        <header><h3>Console</h3><small>événements reçus</small></header>
+        <ol class="console" id="console"></ol>
+      </article>
+    </div>
+  </section>
+
+</main>
+
+<footer class="pied">
+  <span>inventaire {{ version }}</span>
+  <span class="sep">·</span>
+  <span>lecture seule</span>
+  <span class="sep">·</span>
+  <span>Datalogic Skorpio, Windows CE 5.0</span>
+  <span class="sep">·</span>
+  <span>fiches produit <a href="https://world.openfoodfacts.org" rel="noopener">Open Food Facts</a></span>
+</footer>
+
+<!-- fiche article -->
+<div class="voile" id="voile" hidden></div>
+<aside class="tiroir" id="tiroir" hidden aria-label="Fiche produit">
+  <button class="fermer" id="fermer" aria-label="Fermer">✕</button>
+  <div id="fiche"></div>
+</aside>
+
+<div class="bulle" id="bulle" hidden></div>
+
+<script src="{{ url_for('static', filename='vitrine.js') }}" defer></script>
+</body>
+</html>

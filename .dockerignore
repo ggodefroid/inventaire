@@ -1,0 +1,12 @@
+# Tout est exclu par defaut : l'image ne doit contenir que le serveur Python.
+*
+
+# ... et seul ceci est reintroduit.
+!backend/
+!docker/
+!requirements.txt
+
+# Meme reintroduit, ceci n'a rien a faire dans l'image.
+backend/donnees/
+**/__pycache__/
+**/*.py[cod]
