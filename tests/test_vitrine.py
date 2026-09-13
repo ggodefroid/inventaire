@@ -335,9 +335,41 @@ class TestRoutes(unittest.TestCase):
         self.assertIn("svg", reponse.headers["Content-Type"])
 
     def test_aucune_ecriture_exposee(self):
+        """Seule la liste de courses accepte autre chose qu'un GET.
+
+        Et encore : elle n'ecrit pas ici. La route relaie au serveur du
+        terminal, qui reste l'unique ecrivain de la base. Ce qui compte est
+        qu'aucune route de ce processus ne puisse toucher au stock.
+        """
         for regle in self.app.url_map.iter_rules():
+            mutantes = {"POST", "PUT", "PATCH", "DELETE"} & regle.methods
             with self.subTest(regle=str(regle)):
-                self.assertFalse({"POST", "PUT", "PATCH", "DELETE"} & regle.methods)
+                if str(regle).startswith("/api/courses/"):
+                    self.assertEqual(mutantes, {"POST"})
+                else:
+                    self.assertFalse(mutantes)
+
+    def test_la_connexion_reste_en_lecture_seule(self):
+        """L'invariant de fond : le site ne peut pas ecrire dans SQLite."""
+        lecture = self.app.extensions["frigo"]["lecture"]
+        with lecture.cx() as cx:
+            with self.assertRaises(sqlite3.OperationalError):
+                cx.execute("DELETE FROM lot")
+
+    def test_le_stock_reste_hors_de_portee(self):
+        """Aucune route du site ne touche aux lots, quelle que soit la methode."""
+        for action in ("ajouter", "retirer", "scan", "lot", "nommer", "maj"):
+            route = f"/api/{action}"
+            with self.subTest(route=route):
+                reponse = self.client.post(route, data={"code": "3017620422003"})
+                self.assertIn(reponse.status_code, (404, 405), route)
+
+    def test_le_relais_courses_refuse_ce_qui_n_est_pas_prevu(self):
+        """La liste blanche des actions est close."""
+        for action in ("scan", "lot", "../ajouter", "purge"):
+            with self.subTest(action=action):
+                reponse = self.client.post(f"/api/courses/{action}")
+                self.assertIn(reponse.status_code, (404, 405))
 
     def test_post_refuse(self):
         for route in ("/", "/api/etat", "/api/article/3017620422003"):

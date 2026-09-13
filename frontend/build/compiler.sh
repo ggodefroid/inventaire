@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Compilation du client Windows CE. Execute dans le conteneur par build.sh,
-# ou directement sur une machine ou mcs est installe.
+# Compilation du client Windows CE. Execute dans le conteneur `client` de la
+# pile, ou directement sur une machine ou mcs est installe.
 #
 # Trois passes, et la distinction entre les deux premieres est le coeur du
 # procede :
@@ -36,7 +36,7 @@ bureau=0
 [ "${1:-}" = "--bureau" ] && bureau=1
 
 if ! command -v mcs >/dev/null 2>&1; then
-  echo "mcs introuvable. Lancez ./build.sh, qui prepare le conteneur." >&2
+  echo "mcs introuvable. Lancez ./demarrer.sh, qui prepare le conteneur." >&2
   exit 1
 fi
 

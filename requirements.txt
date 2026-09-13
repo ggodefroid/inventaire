@@ -1,3 +1,5 @@
-flask>=3.0
+# Le serveur du terminal n'a besoin que de Pillow ; flask et flask-sock sont
+# pour le site public et le serveur MCP.
+flask>=3.1
 flask-sock>=0.7
-pillow>=10
+pillow>=12

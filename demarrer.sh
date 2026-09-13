@@ -1,16 +1,21 @@
 #!/usr/bin/env bash
 # Lance l'inventaire en production, dans des conteneurs.
 #
-# Le script ne fait rien que docker-compose.yml ne sache faire : il prepare ce
-# que compose suppose deja pret. Un depot fraichement clone n'a ni .env, ni
+# Le script ne fait rien que compose.yaml ne sache faire : il prepare ce que
+# compose suppose deja pret. Un depot fraichement clone n'a ni .env, ni
 # backend/donnees/, ni dist/ -- et laisser Docker creer ces dossiers lui-meme
 # les rend a root, ce que personne ne remarque avant la premiere panne.
+#
+# La compilation du client Windows CE fait partie de la pile : le conteneur
+# `client` produit dist/Inventaire.exe a chaque lancement, et les autres
+# services attendent qu'il ait fini. Il n'y a plus rien a compiler a la main.
 #
 #   ./demarrer.sh              prepare, construit, demarre, verifie
 #   ./demarrer.sh --arreter    arrete sans rien supprimer
 #   ./demarrer.sh --etat       etat des services et sondes de sante
-#   ./demarrer.sh --journaux   suit les journaux des deux services
-#   ./demarrer.sh --nettoyer   arrete, supprime conteneurs et image
+#   ./demarrer.sh --journaux   suit les journaux des services
+#   ./demarrer.sh --apercu     photographie les ecrans du client -> dist/apercu/
+#   ./demarrer.sh --nettoyer   arrete, supprime conteneurs et images
 #
 # Les donnees ne sont jamais touchees : elles vivent dans backend/donnees/,
 # sur l'hote.
@@ -31,6 +36,7 @@ for argument in "$@"; do
     --arreter)  action="arreter" ;;
     --etat)     action="etat" ;;
     --journaux) action="journaux" ;;
+    --apercu)   action="apercu" ;;
     --nettoyer) action="nettoyer" ;;
     -h|--help)  usage; exit 0 ;;
     *) rouge "argument inconnu : $argument"; usage; exit 2 ;;
@@ -79,10 +85,14 @@ case "$action" in
   arreter)  exec "${compose[@]}" stop ;;
   etat)     exec "${compose[@]}" ps ;;
   journaux) exec "${compose[@]}" logs -f --tail 50 ;;
+  apercu)
+    exec "${compose[@]}" --profile apercu run --rm apercu ;;
   nettoyer)
-    "${compose[@]}" down --remove-orphans || true
-    $moteur rmi "inventaire-frigo:${FRIGO_TAG:-1.0.0}" 2>/dev/null || true
-    vert "conteneurs et image supprimes ; backend/donnees/ est intact"
+    "${compose[@]}" --profile apercu down --remove-orphans || true
+    for image in inventaire-frigo inventaire-client inventaire-apercu; do
+      $moteur rmi "$image:${FRIGO_TAG:-1.0.0}" 2>/dev/null || true
+    done
+    vert "conteneurs et images supprimes ; backend/donnees/ est intact"
     exit 0 ;;
 esac
 
@@ -123,16 +133,10 @@ set -a; . ./.env; set +a
 # reviendraient a root et le conteneur ne pourrait plus y ecrire.
 mkdir -p backend/donnees dist
 
-if [ ! -f dist/Inventaire.exe ]; then
-  jaune "dist/ ne contient pas Inventaire.exe"
-  echo "  le serveur demarrera, mais /telecharger n'aura rien a proposer"
-  echo "  au terminal. Pour y remedier :  ./build.sh"
-  echo
-fi
-
 # ------------------------------------------------------------- demarrage
 
 jaune "construction et demarrage (${compose[*]})"
+echo "le conteneur client compile d'abord le binaire du terminal dans dist/"
 echo
 "${compose[@]}" up -d --build
 
@@ -140,13 +144,15 @@ echo
 
 port_serveur="${FRIGO_PORT_SERVEUR:-8080}"
 port_vitrine="${FRIGO_PORT_VITRINE:-8081}"
+port_mcp="${FRIGO_PORT_MCP:-8082}"
 
 echo
 jaune "attente des sondes de sante"
 sain=0
 for _ in $(seq 1 60); do
   if curl -fsS -m 2 "http://127.0.0.1:$port_serveur/api/ping" >/dev/null 2>&1 \
-     && curl -fsS -m 2 "http://127.0.0.1:$port_vitrine/sante" >/dev/null 2>&1; then
+     && curl -fsS -m 2 "http://127.0.0.1:$port_vitrine/sante" >/dev/null 2>&1 \
+     && curl -fsS -m 2 "http://127.0.0.1:$port_mcp/sante" >/dev/null 2>&1; then
     sain=1; break
   fi
   sleep 2
@@ -158,8 +164,9 @@ echo
 
 if [ "$sain" != 1 ]; then
   rouge "un service ne repond pas. Les journaux disent pourquoi :"
-  echo "    ${compose[*]} logs serveur"
-  echo "    ${compose[*]} logs vitrine"
+  for service in client serveur vitrine mcp; do
+    echo "    ${compose[*]} logs $service"
+  done
   exit 1
 fi
 
@@ -179,6 +186,7 @@ for ip in $adresses; do
   printf '    %-28s <- a saisir dans les reglages du terminal\n' \
          "http://$ip:$port_serveur/"
   printf '    %-28s le site public\n' "http://$ip:$port_vitrine/"
+  printf '    %-28s serveur MCP, pour le LLM local\n' "http://$ip:$port_mcp/mcp"
 done
 cat <<EOF
 

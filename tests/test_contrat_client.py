@@ -76,6 +76,12 @@ def cles_emises_par_le_serveur() -> set[str]:
         application.detail({"code": "3017620422003"}),
         application.inventaire({}),
         application.bientot({"jours": "30"}),
+        application.courses_ajouter({"code": "3017620422003", "qte": "2"}),
+        application.courses_ajouter({"libelle": "pain de campagne"}),
+        application.courses({}),
+        application.courses_cocher({"id": "1", "pris": "1"}),
+        application.courses_retirer({"id": "2"}),
+        application.courses_vider({}),
         {"ok": 0, "erreur": "pour couvrir le chemin d'erreur",
          "aujourdhui": dt.date.today().isoformat()},
     ]

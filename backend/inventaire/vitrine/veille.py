@@ -83,6 +83,20 @@ class Veille:
             self._etat = etat
         return etat
 
+    def rafraichir_et_pousser(self) -> int:
+        """Recalcule maintenant et diffuse si quelque chose a bouge.
+
+        La boucle de veille scrute `data_version` chaque seconde : elle
+        finirait par voir le changement. Mais quand c'est le navigateur
+        lui-meme qui vient de cocher un article, une seconde d'attente se voit.
+        Rend la revision obtenue.
+        """
+        avant = self.revision
+        self.rafraichir()
+        if self.revision != avant:
+            self._diffuser(self.message("maj"))
+        return self.revision
+
     def etat(self) -> dict:
         """L'etat courant, horloge remise a l'heure de la requete."""
         with self._verrou:

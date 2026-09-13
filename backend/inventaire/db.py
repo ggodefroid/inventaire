@@ -96,6 +96,31 @@ CREATE TABLE IF NOT EXISTS journal (
 );
 CREATE INDEX IF NOT EXISTS journal_ts ON journal(ts);
 CREATE INDEX IF NOT EXISTS journal_code ON journal(code);
+
+-- La liste de courses. Volontairement a cote du stock, et pas deduite de lui :
+-- ce qu'on veut racheter ne se calcule pas. Un pot de moutarde entame reste en
+-- stock et doit pourtant figurer sur la liste ; un surplus de yaourts n'a rien
+-- a y faire. Seul un humain -- ou le LLM a qui on demande un menu -- sait.
+--
+-- `code` relie l'entree au catalogue quand elle vient d'un scan : on retrouve
+-- alors le nom, la marque et la photo sans les recopier. Il est NULL pour ce
+-- qui se saisit au clavier ("pain", "salade") et n'a pas de code-barres.
+CREATE TABLE IF NOT EXISTS courses (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    code      TEXT,            -- code-barres, ou NULL si saisi a la main
+    libelle   TEXT NOT NULL,
+    qte       INTEGER NOT NULL DEFAULT 1 CHECK (qte > 0),
+    pris      INTEGER NOT NULL DEFAULT 0,   -- 0 a prendre, 1 dans le panier
+    origine   TEXT,            -- 'terminal' | 'web' | 'mcp'
+    ajoute_le TEXT NOT NULL,
+    note      TEXT
+);
+-- Rebipper un produit deja sur la liste incremente sa quantite au lieu
+-- d'ajouter une seconde ligne. Les entrees saisies a la main, elles, n'ont pas
+-- de code et echappent donc a la contrainte : deux "fromage" sont permis.
+CREATE UNIQUE INDEX IF NOT EXISTS courses_code
+    ON courses(code) WHERE code IS NOT NULL;
+CREATE INDEX IF NOT EXISTS courses_pris ON courses(pris);
 """
 
 CHAMPS_PRODUIT = (
@@ -481,13 +506,134 @@ class Base:
         durees.sort()
         return durees[len(durees) // 2]
 
+    # -------------------------------------------------------------- courses
+
+    def courses(self, inclure_pris: bool = True) -> list[dict]:
+        """La liste, a prendre d'abord, du plus ancien au plus recent.
+
+        Le libelle stocke sert de repli : si la fiche produit arrive plus tard
+        -- le terminal a bippe un code inconnu, Open Food Facts a repondu
+        ensuite -- c'est le nom du catalogue qui s'affiche.
+        """
+        condition = "" if inclure_pris else " WHERE c.pris = 0"
+        lignes = self.cx.execute(f"""
+            SELECT c.id, c.code, c.libelle, c.qte, c.pris, c.origine,
+                   c.ajoute_le, c.note,
+                   p.nom, p.marque, p.quantite AS contenance, p.image_url,
+                   p.nutriscore, p.nova
+              FROM courses c
+              LEFT JOIN produit p ON p.code = c.code
+              {condition}
+             ORDER BY c.pris, c.id
+        """).fetchall()
+        return [self._course(ligne) for ligne in lignes]
+
+    @staticmethod
+    def _course(ligne: sqlite3.Row) -> dict:
+        nom = (ligne["nom"] or "").strip() or ligne["libelle"]
+        return {
+            "id": ligne["id"],
+            "code": ligne["code"] or "",
+            "libelle": nom,
+            "marque": ligne["marque"] or "",
+            "contenance": ligne["contenance"] or "",
+            "qte": ligne["qte"],
+            "pris": bool(ligne["pris"]),
+            "origine": ligne["origine"] or "",
+            "ajoute_le": ligne["ajoute_le"],
+            "note": ligne["note"] or "",
+            "image": bool(ligne["image_url"]),
+            "nutriscore": (ligne["nutriscore"] or "").lower(),
+            "nova": ligne["nova"],
+        }
+
+    def course(self, identifiant: int) -> dict | None:
+        ligne = self.cx.execute("""
+            SELECT c.*, p.nom, p.marque, p.quantite AS contenance, p.image_url,
+                   p.nutriscore, p.nova
+              FROM courses c LEFT JOIN produit p ON p.code = c.code
+             WHERE c.id = ?
+        """, (identifiant,)).fetchone()
+        return self._course(ligne) if ligne else None
+
+    def ajouter_aux_courses(self, code: str | None = None, libelle: str = "",
+                            qte: int = 1, origine: str = "terminal",
+                            note: str | None = None) -> dict:
+        """Ajoute, ou incremente si le code y est deja. Rend l'entree a jour."""
+        qte = max(1, int(qte))
+        code = (code or "").strip() or None
+        libelle = (libelle or "").strip()
+        if code and not libelle:
+            libelle = self.libelle(code)
+        if not libelle:
+            raise ValueError("un article sans libelle ni code ne veut rien dire")
+
+        with self.tx() as cx:
+            if code:
+                existante = cx.execute(
+                    "SELECT id, qte FROM courses WHERE code = ?", (code,)).fetchone()
+                if existante is not None:
+                    # Un article repris alors qu'il etait deja dans le panier
+                    # revient a prendre : c'est qu'on en veut davantage.
+                    cx.execute(
+                        "UPDATE courses SET qte = ?, pris = 0 WHERE id = ?",
+                        (existante["qte"] + qte, existante["id"]))
+                    return self.course(existante["id"])
+            curseur = cx.execute(
+                "INSERT INTO courses (code, libelle, qte, pris, origine,"
+                "                     ajoute_le, note)"
+                " VALUES (?, ?, ?, 0, ?, ?, ?)",
+                (code, libelle, qte, origine, _maintenant(), note))
+            return self.course(curseur.lastrowid)
+
+    def cocher_course(self, identifiant: int, pris: bool = True) -> dict | None:
+        with self.tx() as cx:
+            cx.execute("UPDATE courses SET pris = ? WHERE id = ?",
+                       (1 if pris else 0, int(identifiant)))
+        return self.course(int(identifiant))
+
+    def retirer_course(self, identifiant: int, qte: int | None = None) -> dict | None:
+        """Retire l'article, ou seulement `qte` unites. Rend ce qui reste."""
+        identifiant = int(identifiant)
+        with self.tx() as cx:
+            ligne = cx.execute("SELECT qte FROM courses WHERE id = ?",
+                               (identifiant,)).fetchone()
+            if ligne is None:
+                return None
+            if qte is not None and int(qte) < ligne["qte"]:
+                cx.execute("UPDATE courses SET qte = qte - ? WHERE id = ?",
+                           (int(qte), identifiant))
+                reste = True
+            else:
+                cx.execute("DELETE FROM courses WHERE id = ?", (identifiant,))
+                reste = False
+        return self.course(identifiant) if reste else None
+
+    def vider_courses(self, seulement_pris: bool = True) -> int:
+        with self.tx() as cx:
+            curseur = cx.execute(
+                "DELETE FROM courses WHERE pris = 1" if seulement_pris
+                else "DELETE FROM courses")
+            return curseur.rowcount or 0
+
+    def compteurs_courses(self) -> dict:
+        ligne = self.cx.execute("""
+            SELECT COUNT(*)                            AS lignes,
+                   COALESCE(SUM(qte), 0)               AS articles,
+                   COALESCE(SUM(CASE WHEN pris = 0 THEN qte ELSE 0 END), 0) AS a_prendre
+              FROM courses
+        """).fetchone()
+        return {"lignes": ligne["lignes"], "articles": ligne["articles"],
+                "a_prendre": ligne["a_prendre"]}
+
     def compteurs(self) -> dict:
         c = self.cx.execute("""
             SELECT (SELECT IFNULL(SUM(qte),0) FROM lot WHERE qte>0)            AS unites,
                    (SELECT COUNT(DISTINCT code) FROM lot WHERE qte>0)          AS references_,
                    (SELECT COUNT(*) FROM lot WHERE qte>0)                      AS lots,
                    (SELECT COUNT(*) FROM produit WHERE source='openfoodfacts') AS fiches,
-                   (SELECT COUNT(*) FROM journal)                              AS mouvements
+                   (SELECT COUNT(*) FROM journal)                              AS mouvements,
+                   (SELECT IFNULL(SUM(qte),0) FROM courses WHERE pris=0)       AS courses
         """).fetchone()
         perimes = self.cx.execute(
             "SELECT IFNULL(SUM(qte),0) AS n FROM lot "
@@ -496,4 +642,5 @@ class Base:
         return {
             "unites": c["unites"], "references": c["references_"], "lots": c["lots"],
             "fiches": c["fiches"], "mouvements": c["mouvements"], "perimes": perimes["n"],
+            "courses": c["courses"],
         }

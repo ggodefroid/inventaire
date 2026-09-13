@@ -1,12 +1,13 @@
-# Tout est exclu par defaut : l'image ne doit contenir que le serveur Python.
+# Tout est exclu par defaut ; seul le necessaire est reintroduit.
 *
 
-# ... et seul ceci est reintroduit.
 !backend/
+!frontend/
 !docker/
 !requirements.txt
 
-# Meme reintroduit, ceci n'a rien a faire dans l'image.
+# Meme reintroduit, ceci n'a rien a faire dans une image.
 backend/donnees/
+frontend/build/Version.cs
 **/__pycache__/
 **/*.py[cod]

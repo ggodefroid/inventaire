@@ -48,15 +48,21 @@ def fermer_tout() -> None:
         _A_FERMER.pop().fermer()
 
 
-def application_de_test(reponses: dict | None = None) -> tuple[Application, Base]:
+def application_de_test(reponses: dict | None = None,
+                        prechauffage: bool = False) -> tuple[Application, Base]:
     """Application branchee sur une base jetable, sans acces reseau.
 
     `reponses` associe un code-barres a une fiche Open Food Facts brute ;
     tout code absent de la table est traite comme introuvable au catalogue.
+
+    Le prechauffage des photos est coupe par defaut : c'est un travail de
+    fond, et un test qui compte les entrees du cache ne doit pas voir
+    apparaitre des vignettes qu'il n'a pas demandees.
     """
     dossier = Path(tempfile.mkdtemp(prefix="frigo-test-"))
     base = Base(dossier / "test.db")
-    vignettes = Vignettes(dossier / "cache", agent="test/1.0")
+    vignettes = Vignettes(dossier / "cache", agent="test/1.0",
+                          ouvriers=2 if prechauffage else 0)
     application = Application(base, vignettes, en_ligne=True)
     _A_FERMER.append(base)
 

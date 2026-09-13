@@ -317,6 +317,46 @@ class Lecture:
                                (code,)).fetchone()
         return (ligne["image_url"] or None) if ligne is not None else None
 
+    def courses(self) -> list[dict]:
+        """La liste de courses, a prendre d'abord.
+
+        Jointe au catalogue : une ligne posee par le terminal ne porte qu'un
+        code-barres, et c'est la fiche produit qui lui donne un nom, une
+        marque et une photo -- eventuellement plus tard, quand Open Food Facts
+        aura repondu.
+        """
+        with self.cx() as cx:
+            # La table peut manquer : le site lit une base que le serveur a pu
+            # creer avant l'arrivee de la liste de courses, et il n'a pas le
+            # droit de la creer lui-meme.
+            if not cx.execute("SELECT 1 FROM sqlite_master WHERE type='table'"
+                              " AND name='courses'").fetchone():
+                return []
+            lignes = cx.execute("""
+                SELECT c.id, c.code, c.libelle, c.qte, c.pris, c.origine,
+                       c.ajoute_le, c.note,
+                       p.nom, p.marque, p.quantite AS contenance, p.image_url,
+                       p.nutriscore, p.nova
+                  FROM courses c
+                  LEFT JOIN produit p ON p.code = c.code
+                 ORDER BY c.pris, c.id
+            """).fetchall()
+        return [{
+            "id": ligne["id"],
+            "code": ligne["code"] or "",
+            "libelle": (ligne["nom"] or "").strip() or ligne["libelle"],
+            "marque": ligne["marque"] or "",
+            "contenance": ligne["contenance"] or "",
+            "qte": int(ligne["qte"]),
+            "pris": bool(ligne["pris"]),
+            "origine": ligne["origine"] or "",
+            "ajoute_le": ligne["ajoute_le"] or "",
+            "note": ligne["note"] or "",
+            "photo": bool(ligne["image_url"]),
+            "nutriscore": (ligne["nutriscore"] or "").lower(),
+            "nova": ligne["nova"],
+        } for ligne in lignes]
+
     def compteurs(self) -> dict:
         with self.cx() as cx:
             c = cx.execute("""

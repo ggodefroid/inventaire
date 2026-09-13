@@ -186,7 +186,7 @@ couple (code, taille) donné.
 ### `GET /api/maj`
 
 Ce que `dist/` contient : `version` (empreinte des sources du client, écrite
-par `build.sh`), `taille` du binaire, `nom`, et `disponible`. Le terminal
+par le conteneur `client`), `taille` du binaire, `nom`, et `disponible`. Le terminal
 compare `version` à la sienne et propose la mise à jour si elles diffèrent.
 
 ### `GET /` · `GET /telecharger`

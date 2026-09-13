@@ -171,14 +171,32 @@ class TestRoutes(unittest.TestCase):
         octets = source.getvalue()
         self.app.vignettes._original = lambda url: octets
 
+        import struct
         self.app.scan({"code": "3017620422003"})
+
+        # Par defaut : 8 bits palettise. Le tiers des octets du 24 bits, ce qui
+        # sur une radio de 2005 fait la difference entre attendre et voir.
         corps, mime = self.app.image({"code": "3017620422003", "l": "80", "h": "80"})
         self.assertEqual(mime, "image/bmp")
         self.assertEqual(corps[:2], b"BM")
-        import struct
         self.assertEqual(struct.unpack_from("<ii", corps, 18), (80, 80))
-        self.assertEqual(struct.unpack_from("<H", corps, 28)[0], 24)   # 24 bits
+        self.assertEqual(struct.unpack_from("<H", corps, 28)[0], 8)
         self.assertEqual(struct.unpack_from("<I", corps, 30)[0], 0)    # non compresse
+        # Une palette occupe l'espace entre l'entete et les pixels. Sa taille
+        # suit l'image : Pillow n'ecrit que les couleurs employees, et cette
+        # vignette-ci est unie.
+        debut_pixels = struct.unpack_from("<I", corps, 10)[0]
+        palette = debut_pixels - 54
+        self.assertEqual(palette % 4, 0)
+        self.assertGreaterEqual(palette, 4)
+        self.assertLessEqual(palette, 256 * 4)
+
+        # Et le 24 bits reste servi a qui le demande : un binaire de terminal
+        # anterieur a cette version continue d'afficher ses photos.
+        vingt_quatre, _ = self.app.image(
+            {"code": "3017620422003", "l": "80", "h": "80", "img": "bmp"})
+        self.assertEqual(struct.unpack_from("<H", vingt_quatre, 28)[0], 24)
+        self.assertGreater(len(vingt_quatre), len(corps) * 2)
 
     def test_photo_absente(self):
         self.app.scan({"code": "0000000000017"})

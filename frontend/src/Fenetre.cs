@@ -34,6 +34,7 @@ namespace Inventaire
         public EcranSaisie Saisie;
         public EcranDetail Detail;
         public EcranListe Liste;
+        public EcranCourses Courses;
         public EcranConfiguration Configuration;
         public EcranPhoto Visionneuse;
         public EcranMaj Maj;
@@ -100,12 +101,13 @@ namespace Inventaire
             Saisie = new EcranSaisie(this);
             Detail = new EcranDetail(this);
             Liste = new EcranListe(this);
+            Courses = new EcranCourses(this);
             Configuration = new EcranConfiguration(this);
             Visionneuse = new EcranPhoto(this);
             Maj = new EcranMaj(this);
             foreach (Ecran ecran in new Ecran[] { Scan, Article, Saisie, Detail,
-                                                  Liste, Configuration, Visionneuse,
-                                                  Maj })
+                                                  Liste, Courses, Configuration,
+                                                  Visionneuse, Maj })
             {
                 ecran.Visible = false;
                 Controls.Add(ecran);
@@ -341,6 +343,9 @@ namespace Inventaire
                     return true;
                 case Keys.F3:
                     Aller(Configuration, null);
+                    return true;
+                case Keys.F4:
+                    Aller(Courses, null);
                     return true;
             }
             return false;

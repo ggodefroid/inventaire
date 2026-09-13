@@ -130,7 +130,7 @@ C'est la voie normale une fois le Wi-Fi en place (voir
 [docs/02-reseau.md](02-reseau.md)).
 
 ```bash
-./build.sh                       # produit dist/Inventaire.exe et dist/inventaire.ini
+./demarrer.sh                    # produit dist/Inventaire.exe et dist/inventaire.ini
 python3 backend/serveur.py       # sert dist/ sur /telecharger
 ```
 

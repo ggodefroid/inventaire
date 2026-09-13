@@ -555,6 +555,16 @@ def instantane(lecture, *, journal_max: int = 120) -> dict:
     pires = sorted((p for p in postes if p["jours"] is not None),
                    key=lambda p: p["jours"])[:8]
 
+    # La liste de courses voyage dans l'instantane : elle profite ainsi du
+    # meme mecanisme que le reste. Le terminal inscrit un article, SQLite
+    # incremente data_version, la veille recalcule une fois et pousse -- la
+    # liste se coche toute seule sur le telephone de celui qui fait les
+    # courses, sans qu'il ait rien a rafraichir.
+    courses = lecture.courses()
+
+    compteurs["courses"] = sum(a["qte"] for a in courses if not a["pris"])
+    compteurs["courses_lignes"] = len(courses)
+
     return {
         "horloge": {
             "iso": maintenant.isoformat(timespec="seconds"),
@@ -598,6 +608,7 @@ def instantane(lecture, *, journal_max: int = 120) -> dict:
         "niveaux": _niveaux(postes),
         "urgents": pires,
         "postes": postes,
+        "courses": courses,
         "journal": lecture.journal(journal_max),
         "systeme": {
             "lecture_seule": lecture.seulement_ro,

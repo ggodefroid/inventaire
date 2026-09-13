@@ -80,6 +80,8 @@ const couleurUrgence = j => URGENCES[classeJours(j)].c;
 
 /* ------------------------------------------------------------------ etat */
 
+const VUES = ['bord', 'frigo', 'stock', 'courses', 'flux'];
+
 const S = {
   etat: null, vue: 'bord', filtre: '', urgence: null,
   tri: 'peremption', sens: 1, code: null, revision: 0, vivant: false,
@@ -123,8 +125,8 @@ function anneau(donnees, {centre = '', sous = '', couleurs = null, largeur = 220
   const r = 42, C = 2 * Math.PI * r;
   if (!total) {
     return `<svg viewBox="0 0 120 120" width="${cote}" height="${cote}" role="img">
-      <circle cx="60" cy="60" r="${r}" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="15"/>
-      <text x="60" y="63" text-anchor="middle" fill="#3f5560"
+      <circle cx="60" cy="60" r="${r}" fill="none" stroke="currentColor" class="grille" stroke-opacity=".07" stroke-width="15"/>
+      <text x="60" y="63" text-anchor="middle" fill="currentColor" class="axe"
         font-family="var(--mono)" font-size="10">vide</text></svg>`;
   }
   let decalage = 0;
@@ -144,11 +146,11 @@ function anneau(donnees, {centre = '', sous = '', couleurs = null, largeur = 220
   const n = String(centre).length;
   const taille = n <= 3 ? 23 : n <= 5 ? 19 : n <= 7 ? 15 : 12;
   return `<svg viewBox="0 0 120 120" width="${cote}" height="${cote}" role="img">
-    <circle cx="60" cy="60" r="${r}" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="15"/>
+    <circle cx="60" cy="60" r="${r}" fill="none" stroke="currentColor" class="grille" stroke-opacity=".05" stroke-width="15"/>
     ${arcs}
-    <text x="60" y="${sous ? 60 : 65}" text-anchor="middle" fill="#eafffa"
+    <text x="60" y="${sous ? 60 : 65}" text-anchor="middle" fill="var(--vif)"
       font-family="ui-monospace,monospace" font-size="${taille}" font-weight="700">${esc(centre)}</text>
-    ${sous ? `<text x="60" y="72" text-anchor="middle" fill="#6d8794"
+    ${sous ? `<text x="60" y="72" text-anchor="middle" fill="var(--doux)"
       font-family="ui-monospace,monospace" font-size="7.5"
       letter-spacing=".9">${esc(sous)}</text>` : ''}
   </svg>`;
@@ -180,13 +182,13 @@ function aire(serie, {cle, largeur, hauteur = 150, couleur = '#2ff0c8', format =
   const grille = Array.from({length: paliers + 1}, (_, k) => {
     const v = bas + (haut - bas) * k / paliers, yy = y(v);
     return `<line x1="${marge.h}" x2="${largeur - marge.d}" y1="${yy.toFixed(1)}" y2="${yy.toFixed(1)}"
-       stroke="rgba(255,255,255,.05)"/>
-      <text x="${marge.h - 5}" y="${(yy + 3).toFixed(1)}" text-anchor="end" fill="#3f5560"
+       stroke="currentColor" class="grille" stroke-opacity=".05"/>
+      <text x="${marge.h - 5}" y="${(yy + 3).toFixed(1)}" text-anchor="end" fill="currentColor" class="axe"
        font-family="ui-monospace,monospace" font-size="8.5">${format(Math.round(v))}</text>`;
   }).join('');
   const etiquettes = [0, Math.floor(serie.length / 2), serie.length - 1]
     .filter((v, i, t) => t.indexOf(v) === i)
-    .map(i => `<text x="${x(i).toFixed(1)}" y="${hauteur - 6}" text-anchor="middle" fill="#3f5560"
+    .map(i => `<text x="${x(i).toFixed(1)}" y="${hauteur - 6}" text-anchor="middle" fill="currentColor" class="axe"
       font-family="ui-monospace,monospace" font-size="8.5">${jj(serie[i].jour).slice(0, 5)}</text>`).join('');
   const dernier = serie[serie.length - 1];
   const id = 'd' + Math.random().toString(36).slice(2, 7);
@@ -229,15 +231,15 @@ function colonnes(serie, {largeur, hauteur = 150} = {}) {
   }).join('');
   return `<svg viewBox="0 0 ${largeur} ${hauteur}" width="${largeur}" height="${hauteur}" role="img">
     <line x1="${marge.h}" x2="${largeur - marge.d}" y1="${zero}" y2="${zero}"
-      stroke="rgba(255,255,255,.12)"/>
+      stroke="currentColor" class="grille" stroke-opacity=".12"/>
     <text x="${marge.h - 5}" y="${marge.t + 8}" text-anchor="end" fill="#3fe08a"
       font-family="ui-monospace,monospace" font-size="8.5">+${haut}</text>
     <text x="${marge.h - 5}" y="${marge.t + H}" text-anchor="end" fill="#ff7ad9"
       font-family="ui-monospace,monospace" font-size="8.5">-${haut}</text>
     ${barres}
-    <text x="${marge.h}" y="${hauteur - 5}" fill="#3f5560"
+    <text x="${marge.h}" y="${hauteur - 5}" fill="currentColor" class="axe"
       font-family="ui-monospace,monospace" font-size="8.5">${jj(serie[0].jour).slice(0, 5)}</text>
-    <text x="${largeur - marge.d}" y="${hauteur - 5}" text-anchor="end" fill="#3f5560"
+    <text x="${largeur - marge.d}" y="${hauteur - 5}" text-anchor="end" fill="currentColor" class="axe"
       font-family="ui-monospace,monospace" font-size="8.5">aujourd'hui</text>
   </svg>`;
 }
@@ -262,13 +264,13 @@ function histogramme(valeurs, {largeur, hauteur = 130, etiquettes = null,
     const texte = etiquettes(i);
     if (!texte) return '';
     return `<text x="${(marge.h + i * pas + pas / 2).toFixed(1)}" y="${hauteur - 4}"
-      text-anchor="middle" fill="#3f5560" font-family="ui-monospace,monospace"
+      text-anchor="middle" fill="currentColor" class="axe" font-family="ui-monospace,monospace"
       font-size="8.5">${esc(texte)}</text>`;
   }).join('') : '';
   return `<svg viewBox="0 0 ${largeur} ${hauteur}" width="${largeur}" height="${hauteur}" role="img">
     <line x1="${marge.h}" x2="${largeur - marge.d}" y1="${marge.t + H}" y2="${marge.t + H}"
-      stroke="rgba(255,255,255,.1)"/>
-    <text x="${marge.h - 5}" y="${marge.t + 8}" text-anchor="end" fill="#3f5560"
+      stroke="currentColor" class="grille" stroke-opacity=".1"/>
+    <text x="${marge.h - 5}" y="${marge.t + 8}" text-anchor="end" fill="currentColor" class="axe"
       font-family="ui-monospace,monospace" font-size="8.5">${haut}</text>
     ${barres}${libelles}
   </svg>`;
@@ -291,10 +293,10 @@ function grilleActivite(grille, {largeur} = {}) {
       ${v ? `<title>${jours[j]} ${h}h : ${v}</title>` : ''}</rect>`;
   }).join('')).join('');
   const libJours = jours.map((nom, j) => `<text x="${marge.h - 5}"
-    y="${(marge.t + j * pas + cote * .78).toFixed(1)}" text-anchor="end" fill="#3f5560"
+    y="${(marge.t + j * pas + cote * .78).toFixed(1)}" text-anchor="end" fill="currentColor" class="axe"
     font-family="ui-monospace,monospace" font-size="8">${nom}</text>`).join('');
   const libHeures = [0, 6, 12, 18].map(h => `<text x="${(marge.h + h * pas + cote / 2).toFixed(1)}"
-    y="${(marge.t - 4).toFixed(1)}" text-anchor="middle" fill="#3f5560"
+    y="${(marge.t - 4).toFixed(1)}" text-anchor="middle" fill="currentColor" class="axe"
     font-family="ui-monospace,monospace" font-size="8">${h}h</text>`).join('');
   return `<svg viewBox="0 0 ${largeur} ${hauteur}" width="${largeur}" height="${hauteur}" role="img">
     ${libHeures}${libJours}${cases}</svg>`;
@@ -330,7 +332,6 @@ function brancher() {
   socket.onopen = () => {
     tentatives = 0;
     liaison(true, 'liaison');
-    tracer('flux ouvert', 'ok');
   };
   socket.onmessage = ev => {
     let message;
@@ -340,8 +341,6 @@ function brancher() {
       if (message.revision !== S.revision) rattraper();
       return;
     }
-    tracer(message.type === 'init' ? 'état initial reçu'
-                                   : `mouvement, révision ${message.revision}`, 'ok');
     appliquer(message);
   };
   socket.onclose = () => { liaison(false, 'coupé'); replier(); };
@@ -351,7 +350,6 @@ function brancher() {
 function replier() {
   clearTimeout(minuteurReprise);
   const attente = Math.min(20000, 800 * Math.pow(1.7, tentatives++));
-  tracer(`reconnexion dans ${Math.round(attente / 1000)} s`, 'ko');
   minuteurReprise = setTimeout(brancher, attente);
   if (tentatives > 1) rattraper();
 }
@@ -369,16 +367,6 @@ function liaison(vivant, texte) {
   el.classList.toggle('vivant', vivant);
   el.classList.toggle('mort', !vivant);
   $('.etat-texte', el).textContent = texte;
-}
-
-function tracer(texte, genre = '') {
-  const liste = $('#console');
-  if (!liste) return;
-  const li = document.createElement('li');
-  li.innerHTML = `<span class="t">${new Date().toLocaleTimeString('fr-FR')}</span>
-    <span class="${genre}">${esc(texte)}</span>`;
-  liste.prepend(li);
-  while (liste.children.length > 60) liste.lastElementChild.remove();
 }
 
 /* ------------------------------------------------------------------ rendu */
@@ -406,7 +394,7 @@ function rendreTout() {
   rendreFrigo();
   rendreStock();
   rendreFlux(e);
-  rendreMachine(e);
+  rendreCourses(e);
 }
 
 /* --- bandeau ----------------------------------------------------------- */
@@ -733,7 +721,7 @@ function rendreFrigo() {
         aria-label="${esc(q.nom || q.code)}">
       <g class="corps">
         <path class="contour" d="${silhouette(p.l, p.h, p.f)}"
-          fill="rgba(9,17,28,.92)" stroke="${teinte}" stroke-width="1.2" stroke-opacity=".8"/>
+          fill="var(--panneau-plein)" fill-opacity=".92" stroke="${teinte}" stroke-width="1.2" stroke-opacity=".8"/>
         <clipPath id="${id}"><rect x="${px.toFixed(1)}" y="${py.toFixed(1)}"
           width="${pl.toFixed(1)}" height="${ph.toFixed(1)}" rx="2"/></clipPath>
         <image href="/photo/${esc(q.code)}?c=64" x="${px.toFixed(1)}" y="${py.toFixed(1)}"
@@ -744,9 +732,9 @@ function rendreFrigo() {
           stroke-opacity=".35" stroke-width=".7"/>
         ${note ? `<rect x="1.5" y="-8" width="8" height="7" rx="1.5" fill="${COULEURS[note]}"/>
           <text x="5.5" y="-2.4" text-anchor="middle" font-family="ui-monospace,monospace"
-            font-size="5.6" font-weight="700" fill="#06130d">${note.toUpperCase()}</text>` : ''}
+            font-size="5.6" font-weight="700" fill="var(--fond)">${note.toUpperCase()}</text>` : ''}
         ${q.total > 1 ? `<circle cx="${(p.l - 4).toFixed(1)}" cy="${(-p.h + 4).toFixed(1)}" r="6"
-            fill="#04070d" stroke="${teinte}" stroke-width=".9"/>
+            fill="var(--fond)" stroke="${teinte}" stroke-width=".9"/>
           <text x="${(p.l - 4).toFixed(1)}" y="${(-p.h + 6.2).toFixed(1)}" text-anchor="middle"
             font-family="ui-monospace,monospace" font-size="6.6" font-weight="700"
             fill="${teinte}">${q.total}</text>` : ''}
@@ -758,10 +746,10 @@ function rendreFrigo() {
     <rect x="${z.x - 3}" y="${z.y + z.h}" width="${z.w + 6}" height="3.5" rx="1.8"
       fill="rgba(47,240,200,.16)"/>
     <rect x="${z.x - 3}" y="${z.y + z.h}" width="${z.w + 6}" height="1.2" rx=".6"
-      fill="rgba(180,255,240,.28)"/>`).join('');
+      fill="var(--vif)" fill-opacity=".28"/>`).join('');
   const balconnets = ZONES_PORTE.map(z => `
     <rect x="${z.x - 4}" y="${z.y + z.h}" width="${z.w + 8}" height="9" rx="3"
-      fill="rgba(47,240,200,.09)" stroke="rgba(47,240,200,.2)" stroke-width=".8"/>`).join('');
+      fill="rgba(47,240,200,.09)" stroke="var(--cyan)" stroke-opacity=".2" stroke-width=".8"/>`).join('');
 
   dessiner($('#frigo'), () => `
   <svg viewBox="0 0 ${CADRE.L} ${CADRE.H}" role="img" aria-label="Frigo">
@@ -779,25 +767,25 @@ function rendreFrigo() {
     </defs>
 
     <rect x="8" y="6" width="304" height="608" rx="22" fill="url(#caisson)"
-      stroke="rgba(47,240,200,.26)" stroke-width="1.4"/>
+      stroke="var(--cyan)" stroke-opacity=".26" stroke-width="1.4"/>
     <rect x="22" y="20" width="276" height="580" rx="14" fill="url(#froid)"
-      stroke="rgba(47,240,200,.14)"/>
+      stroke="var(--cyan)" stroke-opacity=".14"/>
     ${etageres}
-    <rect x="30" y="462" width="262" height="142" rx="9" fill="rgba(4,8,14,.5)"
-      stroke="rgba(47,240,200,.16)"/>
+    <rect x="30" y="462" width="262" height="142" rx="9" fill="var(--fond-2)" fill-opacity=".5"
+      stroke="var(--cyan)" stroke-opacity=".16"/>
     <rect x="96" y="592" width="130" height="4" rx="2" fill="rgba(47,240,200,.3)"/>
 
     <rect x="322" y="18" width="128" height="584" rx="16" fill="url(#porte)"
-      stroke="rgba(47,240,200,.22)" stroke-width="1.2"/>
-    <rect x="330" y="28" width="112" height="564" rx="10" fill="rgba(4,8,14,.4)"
-      stroke="rgba(47,240,200,.1)"/>
+      stroke="var(--cyan)" stroke-opacity=".22" stroke-width="1.2"/>
+    <rect x="330" y="28" width="112" height="564" rx="10" fill="var(--fond-2)" fill-opacity=".4"
+      stroke="var(--cyan)" stroke-opacity=".1"/>
     ${balconnets}
     <rect x="436" y="200" width="7" height="220" rx="3.5" fill="rgba(47,240,200,.22)"/>
 
     <g class="articles">${articles}</g>
 
     <text x="20" y="630" font-family="ui-monospace,monospace" font-size="7.5"
-      fill="rgba(109,135,148,.7)" letter-spacing="1.6">RANGEMENT DÉRIVÉ DU CODE BARRES</text>
+      fill="var(--doux)" fill-opacity=".7" letter-spacing="1.6">RANGEMENT DÉRIVÉ DU CODE BARRES</text>
   </svg>`);
 
   const occupe = places.length;
@@ -901,37 +889,97 @@ function rendreFlux(e) {
     </li>`).join('') : '<li class="vide">rien qui presse</li>';
 }
 
-/* --------------------------------------------------------------- machine */
+/* --------------------------------------------------------------- courses
 
-const SCHEMA = `  carton          Skorpio CE 5.0        serveur :8080       vitrine :8081
- +--------+  bip  +--------------+ HTTP +--------------+ ro +-------------+
- | EAN 13 | ----> | PXA270 520MHz| ---> | SQLite + OFF | -> | Flask + ws  |
- +--------+       +--------------+      +--------------+    +------+------+
-                                          ecriture             lecture seule
-                                                                    |
-                                                          WebSocket v
-                                                            ce navigateur`;
+   La liste arrive dans l'instantane, comme le reste : le terminal inscrit un
+   article, la veille le voit et le pousse, la coche apparait ici sans que
+   personne n'ait rafraichi. Les ecritures, elles, repartent en POST vers le
+   serveur du terminal -- ce processus-ci ne sait pas ecrire.               */
 
-function rendreMachine(e) {
-  $('#schema').textContent = SCHEMA;
-  const s = e.systeme || {};
-  const c = e.compteurs || {};
-  $('#machine').innerHTML = [
-    ['base', s.base || '?'],
-    ['mode', s.lecture_seule ? 'mode=ro + query_only' : 'query_only'],
-    ['poids', `${fr1.format((s.octets || 0) / 1024)} ko`],
-    ['révision', 'r' + (e.revision || 0)],
-    ['liaison', S.vivant ? 'WebSocket ouverte' : 'repli HTTP'],
-    ['fiches produit', c.produits],
-    ['dont Open Food Facts', c.fiches],
-    ['dont saisies à la main', c.manuels],
-    ['codes reconstitués', c.alias],
-    ['mouvements journalisés', c.mouvements],
-    ['premier mouvement', jj(c.premier_mouvement) || '-'],
-    ['dernier mouvement', `${jj(c.dernier_mouvement)} ${heureDe(c.dernier_mouvement)}`],
-    ['semaine ISO', e.horloge.semaine],
-    ['jour de l\'année', e.horloge.jour_annee],
-  ].map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
+function rendreCourses(e) {
+  const articles = e.courses || [];
+  const aPrendre = articles.filter(a => !a.pris);
+  const panier = articles.filter(a => a.pris);
+
+  $('#courses-a-prendre').innerHTML = aPrendre.length
+    ? aPrendre.map(ligneCourse).join('')
+    : '<li class="vide">liste vide — bippez un produit sur le terminal, ou tapez-le ci-dessus</li>';
+  $('#courses-panier').innerHTML = panier.length
+    ? panier.map(ligneCourse).join('')
+    : '<li class="vide">rien au panier</li>';
+
+  const unites = aPrendre.reduce((s, a) => s + a.qte, 0);
+  $('#course-compte').textContent = aPrendre.length
+    ? `${aPrendre.length} ligne${aPrendre.length > 1 ? 's' : ''}, ${unites} article${unites > 1 ? 's' : ''}`
+    : '—';
+
+  const pastille = $('#pastille-courses');
+  pastille.textContent = unites > 99 ? '99+' : unites;
+  pastille.classList.toggle('on', unites > 0);
+
+  rendreSuggestions(e, articles);
+}
+
+function ligneCourse(a) {
+  const vignette = a.photo
+    ? `<img class="course-photo" src="/photo/${encodeURIComponent(a.code)}?t=64" alt="" loading="lazy">`
+    : '<span class="course-photo vide" aria-hidden="true"></span>';
+  const detail = [a.marque, a.contenance].filter(Boolean).join(' · ');
+  return `<li class="course ${a.pris ? 'prise' : ''}" data-course="${a.id}">
+    <button class="coche" data-action="cocher" data-pris="${a.pris ? '0' : '1'}"
+            title="${a.pris ? 'remettre à prendre' : 'mettre au panier'}"
+            aria-label="${a.pris ? 'remettre à prendre' : 'mettre au panier'}">${a.pris ? '✓' : ''}</button>
+    ${vignette}
+    <span class="course-texte">
+      <b>${esc(a.libelle)}</b>
+      ${detail ? `<small>${esc(detail)}</small>` : ''}
+    </span>
+    ${a.qte > 1 ? `<span class="course-qte">×${a.qte}</span>` : ''}
+    <button class="retirer" data-action="retirer" title="retirer de la liste"
+            aria-label="retirer de la liste">✕</button>
+  </li>`;
+}
+
+/* Ce qui est peu fourni ou bientot perime, et qui n'est pas deja sur la liste.
+   Une suggestion, pas une deduction : c'est l'humain qui decide de racheter. */
+function rendreSuggestions(e, articles) {
+  const deja = new Set(articles.map(a => a.code).filter(Boolean));
+  const candidats = (e.postes || [])
+    .filter(p => !deja.has(p.code))
+    .filter(p => (p.jours !== null && p.jours <= 6) || p.total <= 1)
+    .sort((a, b) => (a.jours ?? 999) - (b.jours ?? 999))
+    .slice(0, 12);
+
+  $('#suggestions-courses').innerHTML = candidats.length
+    ? candidats.map(p => `<button class="puce" data-suggestion="${esc(p.code)}">
+        <i style="background:${couleurUrgence(p.jours)}"></i>
+        ${esc(p.nom || p.code)}
+        <small>${p.jours !== null && p.jours <= 6 ? echeance(p.peremption, p.jours)
+                                                  : 'dernière unité'}</small>
+      </button>`).join('')
+    : '<p class="note">rien à suggérer : le stock est fourni et rien ne presse.</p>';
+}
+
+async function agirCourses(action, parametres = {}) {
+  const corps = new URLSearchParams(parametres);
+  let reponse, charge;
+  try {
+    reponse = await fetch(`/api/courses/${action}`, {method: 'POST', body: corps});
+    charge = await reponse.json();
+  } catch (e) {
+    return relaisMuet('le site ne joint plus le serveur.');
+  }
+  if (!reponse.ok || !charge.ok) {
+    return relaisMuet(charge.erreur || 'action refusée par le serveur.');
+  }
+  relaisMuet(null);
+  await rattraper();                      // au cas ou la diffusion se perde
+}
+
+function relaisMuet(message) {
+  const el = $('#course-relais');
+  el.hidden = !message;
+  el.textContent = message || '';
 }
 
 /* ------------------------------------------------------------ fiche article */
@@ -1042,7 +1090,7 @@ async function remplirFiche(code) {
       <ul class="lots">${a.lots.map(l => `
         <li class="${classeJours(l.jours)}">
           <span>${l.peremption ? jj(l.peremption) : 'sans date'}</span>
-          <span style="color:#6d8794;font:400 10.5px/1 ui-monospace,monospace">${
+          <span style="color:var(--doux);font:400 10.5px/1 ui-monospace,monospace">${
             echeance(l.peremption, l.jours)}${l.precision === 'mois' ? ' · mois seul' : ''}</span>
           <span class="q">x${l.qte}</span>
         </li>`).join('')}</ul></div>` : ''}
@@ -1113,6 +1161,27 @@ function bulle(evenement, poste) {
   el.style.top = Math.max(8, y) + 'px';
 }
 
+/* ---------------------------------------------------------------- theme
+
+   Sombre par defaut -- la page est un afficheur. Le choix explicite est
+   retenu ; sans choix, on suit le systeme. La classe est posee sur <html>
+   par un bout de script inline dans l'en-tete, avant le premier pixel :
+   ce fichier-ci est charge en `defer` et arriverait trop tard.           */
+
+function poserTheme(nom) {
+  document.documentElement.dataset.theme = nom;
+  try { localStorage.setItem('frigo-theme', nom); } catch (e) {}
+  const meta = document.querySelector('meta[name="theme-color"]:not([media])')
+            || document.head.appendChild(
+                 Object.assign(document.createElement('meta'), {name: 'theme-color'}));
+  meta.content = nom === 'clair' ? '#f4f6f8' : '#04070d';
+  // Les graphes portent leurs couleurs en dur dans le SVG : il faut les
+  // redessiner pour qu'ils suivent le theme.
+  ADAPTATIFS.forEach((fn, el) => {
+    if (el.isConnected && el.clientWidth > 40) el.innerHTML = fn(Math.round(el.clientWidth));
+  });
+}
+
 /* ------------------------------------------------------------ interactions */
 
 function vue(nom) {
@@ -1176,9 +1245,49 @@ function brancherEvenements() {
       if (cible && cible.classList.contains('article-frigo')) ouvrirFiche(cible.dataset.code);
     }
     if (!ev.ctrlKey && !ev.metaKey && document.activeElement !== $('#q')
-        && ['1', '2', '3', '4', '5'].includes(ev.key)) {
-      vue(['bord', 'frigo', 'stock', 'flux', 'machine'][Number(ev.key) - 1]);
+        && ev.key >= '1' && ev.key <= String(VUES.length)) {
+      vue(VUES[Number(ev.key) - 1]);
     }
+  });
+
+  // --- courses ---------------------------------------------------------
+
+  $('#ajout-course').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const champ = $('#course-libelle');
+    const saisie = champ.value.trim();
+    if (!saisie) return;
+    const qte = Math.max(1, Math.min(99, Number($('#course-qte').value) || 1));
+    // Une suite de chiffres est un code-barres ; le reste est un libelle.
+    const parametres = /^[0-9]{6,14}$/.test(saisie) ? {code: saisie} : {libelle: saisie};
+    parametres.qte = qte;
+    champ.value = ''; $('#course-qte').value = 1;
+    await agirCourses('ajouter', parametres);
+    champ.focus();
+  });
+
+  $('#course-vider').addEventListener('click', () => agirCourses('vider'));
+
+  $('#vue-courses').addEventListener('click', ev => {
+    const bouton = ev.target.closest('[data-action]');
+    if (bouton) {
+      const ligne = bouton.closest('[data-course]');
+      if (!ligne) return;
+      const id = ligne.dataset.course;
+      return bouton.dataset.action === 'cocher'
+        ? agirCourses('cocher', {id, pris: bouton.dataset.pris})
+        : agirCourses('retirer', {id});
+    }
+    const suggestion = ev.target.closest('[data-suggestion]');
+    if (suggestion) agirCourses('ajouter', {code: suggestion.dataset.suggestion});
+  });
+
+  // --- theme -----------------------------------------------------------
+
+  $('#theme').addEventListener('click', () => {
+    const actuel = document.documentElement.dataset.theme
+      || (matchMedia('(prefers-color-scheme: light)').matches ? 'clair' : 'sombre');
+    poserTheme(actuel === 'clair' ? 'sombre' : 'clair');
   });
 
   $('#fermer').addEventListener('click', fermerFiche);
@@ -1195,7 +1304,7 @@ function brancherEvenements() {
 
   addEventListener('hashchange', () => {
     const nom = location.hash.slice(1);
-    if (['bord', 'frigo', 'stock', 'flux', 'machine'].includes(nom)) vue(nom);
+    if (VUES.includes(nom)) vue(nom);
   });
 }
 
@@ -1204,8 +1313,7 @@ function brancherEvenements() {
 function demarrer() {
   brancherEvenements();
   const depart = location.hash.slice(1);
-  if (['bord', 'frigo', 'stock', 'flux', 'machine'].includes(depart)) vue(depart);
-  tracer('page chargée');
+  if (VUES.includes(depart)) vue(depart);
   rattraper().then(brancher);
   setInterval(() => {
     if (!S.vivant && S.etat) {

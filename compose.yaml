@@ -1,0 +1,195 @@
+# Inventaire du frigo, en production.
+#
+#   ./demarrer.sh               prepare .env, construit, demarre, verifie
+#   docker compose up -d --build
+#
+# Quatre conteneurs autour d'un seul fichier SQLite.
+#
+#   client    compile le binaire du terminal dans dist/, puis s'arrete
+#   serveur   :8080  ecrit la base -- c'est lui que le terminal tape
+#   vitrine   :8081  le site public, en lecture seule
+#   mcp       :8082  le frigo comme outil pour un LLM local, en lecture seule
+#
+# `serveur` est le seul ecrivain. Les deux autres lisent la meme base en
+# `mode=ro`, et leurs rares ecritures -- cocher un article de la liste de
+# courses -- lui sont relayees en HTTP. Un seul processus touche au fichier.
+#
+# Voir docs/05-production.md.
+
+name: inventaire-frigo
+
+x-commun: &commun
+  build:
+    context: .
+    args:
+      UID: ${FRIGO_UID:-1000}
+      GID: ${FRIGO_GID:-1000}
+  image: inventaire-frigo:${FRIGO_TAG:-1.0.0}
+  restart: unless-stopped
+  stop_grace_period: 15s
+  # Doit etre l'UID proprietaire de backend/donnees/ sur l'hote : rien ne
+  # traduit les identites a travers un montage lie. `./demarrer.sh` le releve.
+  user: "${FRIGO_UID:-1000}:${FRIGO_GID:-1000}"
+  read_only: true
+  tmpfs:
+    - /tmp:size=16m,mode=1777
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "5"
+
+x-sonde: &sonde
+  interval: 30s
+  timeout: 10s
+  retries: 3
+
+services:
+
+  # Compile le client Windows CE et depose Inventaire.exe dans dist/, que le
+  # serveur sert ensuite sur /telecharger. Tourne a chaque lancement de la
+  # pile : quelques secondes de mcs, et le binaire suit toujours les sources.
+  # Ce n'est pas un service -- il finit, et les autres attendent qu'il ait fini.
+  client:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.client
+      # Sans cible explicite, Docker construirait le dernier etage du
+      # fichier -- celui du profil apercu, avec son serveur X.
+      target: compilation
+      args:
+        UID: ${FRIGO_UID:-1000}
+        GID: ${FRIGO_GID:-1000}
+    image: inventaire-client:${FRIGO_TAG:-1.0.0}
+    container_name: frigo-client
+    restart: "no"
+    user: "${FRIGO_UID:-1000}:${FRIGO_GID:-1000}"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    volumes:
+      - ./dist:/dist:z
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Le serveur du terminal. Ecrit la base, relaie Open Food Facts, sert le
+  # binaire du terminal sur /telecharger.
+  serveur:
+    <<: *commun
+    container_name: frigo-serveur
+    command: ["serveur"]
+    # serveur.py referme base et socket sur KeyboardInterrupt ; SIGTERM
+    # l'abattrait avant son `finally`.
+    stop_signal: SIGINT
+    depends_on:
+      client:
+        condition: service_completed_successfully
+    ports:
+      # Sur 0.0.0.0 : le terminal arrive du Wi-Fi, pas de la boucle locale.
+      - "${FRIGO_IP:-0.0.0.0}:${FRIGO_PORT_SERVEUR:-8080}:8080"
+    volumes:
+      # `z` etiquette le dossier pour SELinux, sans quoi Fedora, RHEL et
+      # podman refusent l'acces. Ignore la ou SELinux est absent.
+      - ./backend/donnees:/donnees:z
+      - ./dist:/dist:ro,z
+    environment:
+      TZ: ${TZ:-Europe/Paris}
+      FRIGO_PORT: "8080"
+      FRIGO_HORS_LIGNE: ${FRIGO_HORS_LIGNE:-0}
+      FRIGO_VERBEUX: ${FRIGO_VERBEUX:-0}
+    healthcheck:
+      <<: *sonde
+      # /api/ping interroge SQLite : la sonde lit `ok` dans le corps, pas
+      # seulement le code HTTP.
+      test: ["CMD", "python", "/app/docker/sante.py",
+             "http://127.0.0.1:8080/api/ping"]
+      start_period: 30s
+
+  # Le site public, en lecture seule. Peut tomber sans que le frigo cesse de
+  # fonctionner.
+  vitrine:
+    <<: *commun
+    container_name: frigo-vitrine
+    command: ["vitrine"]
+    depends_on:
+      serveur:
+        # Le temps que serveur.py cree la base, au tout premier demarrage.
+        condition: service_healthy
+    ports:
+      - "${FRIGO_IP:-0.0.0.0}:${FRIGO_PORT_VITRINE:-8081}:8081"
+    volumes:
+      # En ecriture malgre un service en lecture seule : SQLite en mode WAL
+      # doit ecrire le fichier -shm pour pouvoir lire. Le garde-fou est dans
+      # le moteur -- `mode=ro` et `PRAGMA query_only`, voir
+      # backend/inventaire/vitrine/lecture.py.
+      - ./backend/donnees:/donnees:z
+    environment:
+      TZ: ${TZ:-Europe/Paris}
+      FRIGO_PORT: "8081"
+      FRIGO_FILS: ${FRIGO_FILS:-32}
+      FRIGO_JOURNAL: ${FRIGO_JOURNAL:-120}
+      # Les ecritures de la liste de courses partent vers le seul ecrivain.
+      FRIGO_SERVEUR: http://serveur:8080
+    healthcheck:
+      <<: *sonde
+      test: ["CMD", "python", "/app/docker/sante.py",
+             "http://127.0.0.1:8081/sante"]
+      start_period: 20s
+
+  # Les captures d'ecran du client, sans terminal : le build de bureau tourne
+  # dans un serveur X virtuel et se fait photographier ecran par ecran.
+  # Hors profil, donc jamais lance par un `up` ordinaire.
+  #     docker compose --profile apercu run --rm apercu
+  apercu:
+    profiles: ["apercu"]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.client
+      target: apercu
+      args:
+        UID: ${FRIGO_UID:-1000}
+        GID: ${FRIGO_GID:-1000}
+    image: inventaire-apercu:${FRIGO_TAG:-1.0.0}
+    user: "${FRIGO_UID:-1000}:${FRIGO_GID:-1000}"
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - ./dist:/dist:z
+    environment:
+      FRIGO_HOTE: serveur
+      FRIGO_PORT: "8080"
+    depends_on:
+      serveur:
+        condition: service_healthy
+
+  # Le frigo comme outil pour un modele local : ce qu'il y a en stock, ce qui
+  # perime, et de quoi proposer un repas en consequence.
+  mcp:
+    <<: *commun
+    container_name: frigo-mcp
+    command: ["mcp"]
+    depends_on:
+      serveur:
+        condition: service_healthy
+    ports:
+      - "${FRIGO_IP:-0.0.0.0}:${FRIGO_PORT_MCP:-8082}:8082"
+    volumes:
+      - ./backend/donnees:/donnees:z
+    environment:
+      TZ: ${TZ:-Europe/Paris}
+      FRIGO_PORT: "8082"
+      FRIGO_FILS: ${FRIGO_FILS_MCP:-8}
+      FRIGO_SERVEUR: http://serveur:8080
+    healthcheck:
+      <<: *sonde
+      test: ["CMD", "python", "/app/docker/sante.py",
+             "http://127.0.0.1:8082/sante"]
+      start_period: 20s

@@ -8,18 +8,32 @@ Trois raisons de ne pas laisser le terminal chercher l'image lui-meme :
   simplement manquer de l'image OS du terminal -- un `Bitmap(flux)` renvoie
   alors une exception, pas une image degradee.
 
-On envoie donc un BMP 24 bits sans compression, a la taille exacte du cadre.
-C'est plus lourd sur le fil (une vignette de 88 px pese 23 ko) mais c'est
-negligeable en Wi-Fi, et surtout c'est un format que le terminal sait decoder
-sans rien de plus -- et, au pire, qu'il peut lire octet par octet lui-meme.
+On envoie donc un BMP sans compression, a la taille exacte du cadre : un
+format que le terminal decode sans rien de plus et, au pire, qu'il peut lire
+octet par octet lui-meme.
 
-Le cache disque est a deux etages : l'original tel que recu, et chaque taille
-demandee. Rebipper un produit n'appelle donc plus rien.
+**8 bits par defaut, pas 24.** Un BMP palettise pese le tiers du meme cadre en
+couleurs vraies -- 41 ko contre 120 ko pour la grande photo de 200 pixels --
+pour une perte invisible sur un ecran de terminal. Sur une radio 802.11b de
+2005, ce tiers est la difference entre une demi-seconde d'attente et un
+affichage immediat. Le format `bmp` 24 bits reste disponible pour un client
+qui le demande explicitement.
+
+Trois etages de cache : l'original tel que recu, chaque taille demandee sur le
+disque, et les vignettes recentes en memoire. Rebipper un produit n'appelle
+donc plus rien.
+
+Reste le premier scan d'un produit inconnu, ou la photo doit etre telechargee
+chez Open Food Facts puis convertie -- une a trois secondes pendant lesquelles
+le terminal attend. `prechauffer()` fait ce travail des que la fiche est
+resolue, en tache de fond : quand l'ecran demande enfin l'image, elle est deja
+en memoire.
 """
 
 from __future__ import annotations
 
 import collections
+import concurrent.futures
 import hashlib
 import io
 import logging
@@ -40,13 +54,29 @@ except ImportError:                                  # pragma: no cover
     PILLOW_DISPONIBLE = False
 
 FORMATS = {
-    "bmp": ("image/bmp", "bmp"),
+    "bmp8": ("image/bmp", "bmp8"),      # palettise : le tiers des octets
+    "bmp": ("image/bmp", "bmp"),        # 24 bits, pour un client qui l'exige
     "jpg": ("image/jpeg", "jpg"),
     "png": ("image/png", "png"),
 }
+FORMAT_PAR_DEFAUT = "bmp8"
 
 TAILLE_MAX_SOURCE = 4 * 1024 * 1024                  # garde-fou sur le telechargement
 MEMOIRE_PAR_DEFAUT = 24 * 1024 * 1024               # cache en RAM des vignettes
+OUVRIERS = 2                                        # fils de prechauffage
+
+# Le delai des photos n'est pas celui de l'API. Une fiche produit fait deux
+# kilo-octets de JSON et doit revenir vite, sinon le terminal reste bloque sur
+# son bip ; une photo en fait dix a cent, et son telechargement se fait
+# desormais en tache de fond, ou attendre ne coute rien a personne. Les serveurs
+# d'images d'Open Food Facts depassent regulierement les huit secondes :
+# partager le delai de l'API revenait a jeter une photo sur deux.
+DELAI_PHOTO = 20.0
+
+# Les deux cadres que le terminal dessine : la vignette de la fiche article
+# (reglable de 48 a 96 pixels) et la photo plein ecran. Prechauffer les deux
+# couvre tout ce qu'un scan peut declencher ensuite.
+TAILLES_TERMINAL = (80, 200)
 
 
 class Memoire:
@@ -107,8 +137,9 @@ class Memoire:
 
 
 class Vignettes:
-    def __init__(self, dossier: str | Path, *, agent: str, delai: float = 10.0,
-                 memoire_max: int = MEMOIRE_PAR_DEFAUT) -> None:
+    def __init__(self, dossier: str | Path, *, agent: str, delai: float = DELAI_PHOTO,
+                 memoire_max: int = MEMOIRE_PAR_DEFAUT,
+                 ouvriers: int = OUVRIERS) -> None:
         self.memoire = Memoire(memoire_max)
         self.dossier = Path(dossier)
         self.sources = self.dossier / "source"
@@ -117,6 +148,54 @@ class Vignettes:
             chemin.mkdir(parents=True, exist_ok=True)
         self.agent = agent
         self.delai = delai
+        # Deux ouvriers, pas plus : le but est de preparer une photo pendant
+        # que l'utilisateur lit l'ecran, pas d'ouvrir une rafale de connexions
+        # vers Open Food Facts. `ouvriers=0` desactive le prechauffage --
+        # utile pour mesurer le cache sans travail de fond dans le dos.
+        self._fond = (concurrent.futures.ThreadPoolExecutor(
+            max_workers=ouvriers, thread_name_prefix="prechauffe")
+            if ouvriers > 0 else None)
+        self._en_vol: set[str] = set()
+        self._verrou_vol = threading.Lock()
+
+    # ----------------------------------------------------------- prechauffage
+
+    def prechauffer(self, code: str, url: str,
+                    tailles=TAILLES_TERMINAL, format_: str = FORMAT_PAR_DEFAUT) -> int:
+        """Prepare en tache de fond les vignettes que le terminal va demander.
+
+        Appele des qu'une fiche produit est resolue. Rend le nombre de taches
+        effectivement mises en file -- zero si tout est deja en cache.
+
+        Les erreurs sont avalees : un prechauffage rate n'est pas une panne,
+        la demande suivante refera le travail en direct.
+        """
+        if not url or not PILLOW_DISPONIBLE or self._fond is None:
+            return 0
+        mises = 0
+        for taille in tailles:
+            cle = f"{code}:{taille}:{format_}"
+            with self._verrou_vol:
+                if cle in self._en_vol:
+                    continue
+                self._en_vol.add(cle)
+            self._fond.submit(self._prechauffer_une, cle, code, url, taille, format_)
+            mises += 1
+        return mises
+
+    def _prechauffer_une(self, cle: str, code: str, url: str,
+                         taille: int, format_: str) -> None:
+        try:
+            self.obtenir(code, url, taille, taille, format_)
+        except Exception as exc:                     # pragma: no cover
+            log.debug("prechauffage sans effet pour %s : %s", code, exc)
+        finally:
+            with self._verrou_vol:
+                self._en_vol.discard(cle)
+
+    def arreter(self) -> None:
+        if self._fond is not None:
+            self._fond.shutdown(wait=False, cancel_futures=True)
 
     # ----------------------------------------------------------------- source
 
@@ -187,6 +266,13 @@ class Vignettes:
             vignette.save(tampon, "JPEG", quality=82)
         elif format_ == "png":
             vignette.save(tampon, "PNG", optimize=True)
+        elif format_ == "bmp8":
+            # Palette adaptative : les 256 couleurs sont choisies dans l'image
+            # plutot que dans une grille fixe, et le tramage de Floyd-Steinberg
+            # rattrape les degrades d'un emballage. Sur 80 pixels de cote, la
+            # difference avec les couleurs vraies ne se voit pas.
+            vignette.convert("P", palette=Image.ADAPTIVE, colors=256,
+                             dither=Image.FLOYDSTEINBERG).save(tampon, "BMP")
         else:
             vignette.save(tampon, "BMP")             # 24 bits, non compresse
         rendu = tampon.getvalue()

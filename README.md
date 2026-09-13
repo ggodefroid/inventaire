@@ -9,8 +9,11 @@ Tout se pilote sur le terminal ; le PC ne sert qu'à héberger le serveur.
 - **`backend/`** — serveur Python 3 qui écoute sur `0.0.0.0:8080`, tient
   l'inventaire en SQLite et relaie Open Food Facts.
 - **`backend/vitrine.py`** — le même inventaire, en lecture seule, sur le
-  port 8081 : un site public avec tableau de bord, frigo dessiné et
-  rafraîchissement par WebSocket.
+  port 8081 : un site public avec tableau de bord, frigo dessiné, liste de
+  courses et rafraîchissement par WebSocket.
+- **`backend/mcp.py`** — le frigo comme outil pour un LLM local, sur le port
+  8082 : un modèle branché dessus voit le stock et propose un repas avec ce
+  qui périme le plus tôt.
 
 ## Le matériel
 
@@ -60,10 +63,17 @@ Trois choix portent l'ensemble :
    HTTPS à sa place, et lui rend le résultat réduit à ce qui tient sur
    240 pixels.
 
-2. **Les photos arrivent en BMP 24 bits non compressé.** Le décodage JPEG du
-   Compact Framework dépend de codecs qui peuvent manquer de l'image OS — et
+2. **Les photos arrivent en BMP palettisé, non compressé.** Le décodage JPEG
+   du Compact Framework dépend de codecs qui peuvent manquer de l'image OS — et
    leur absence se manifeste par une exception, pas par une image dégradée. Le
    client sait relire le BMP octet par octet si jamais `Bitmap` refuse.
+
+   Palettisé, et non en couleurs vraies : le même cadre pèse le tiers — 41 ko
+   au lieu de 120 pour la grande photo — pour une perte invisible sur cet
+   écran, et sur une radio 802.11b ce tiers est la différence entre une
+   demi-seconde d'attente et un affichage immédiat. La photo part par ailleurs
+   se télécharger **dès le bip**, pendant que l'utilisateur lit le Nutri-Score :
+   quand l'écran la réclame, elle est déjà là.
 
 3. **Le serveur date les réponses.** L'horloge d'un terminal Windows CE dérive
    et repart à zéro au *cold boot*. Chaque réponse porte `aujourdhui=` et
@@ -130,16 +140,18 @@ Le vrai site, lui, tourne à part : voir **[Le site public](#le-site-public)**.
 
 ### 2. Le client
 
+Il n'y a rien à compiler à la main : le conteneur `client` le fait à chaque
+lancement de la pile.
+
 ```bash
-./build.sh                  # -> dist/Inventaire.exe + dist/inventaire.ini
-./build.sh --bureau         # + une version testable sous Linux avec Mono
-./build.sh --apercu         # + une capture de chaque écran -> dist/apercu/
+./demarrer.sh               # le client est compilé, puis les services démarrent
+./demarrer.sh --apercu      # + une capture de chaque écran -> dist/apercu/
 ```
 
-`build.sh` crée un conteneur distrobox jetable, y installe `mono-devel`,
-compile en trois passes, contrôle les en-têtes du binaire, et écrit dans
-`dist/`. `./build.sh --nettoyer` ne laisse rien derrière. Si `mcs` est déjà
-installé sur la machine, `./build.sh --local` se passe du conteneur.
+Le conteneur installe `mono-devel`, compile en trois passes, contrôle les
+en-têtes du binaire, écrit dans `dist/` et s'arrête ; le serveur attend qu'il
+ait fini avant d'ouvrir son port. Une chaîne de compilation de 2005 n'a ainsi
+jamais à toucher le poste de travail.
 
 Les trois passes comptent. La première compile contre les assemblies de
 **référence** du Compact Framework, qui ne décrivent que l'API publique
@@ -152,7 +164,7 @@ en-têtes du résultat.
 ### Voir l'interface sans le terminal
 
 Le binaire livré est pour Windows CE, mais les mêmes sources compilent pour
-Mono. `./build.sh --apercu` les lance dans un serveur X virtuel en 240 × 320,
+Mono. `./demarrer.sh --apercu` les lance dans un serveur X virtuel en 240 × 320,
 déroule un scénario complet contre le serveur, et photographie chaque écran
 dans `dist/apercu/`. C'est ce qui permet d'éprouver une mise en page sans
 reposer le terminal sur son socle à chaque essai — et de voir ce que devient
@@ -250,8 +262,8 @@ première mise en route : **[docs/01-terminal-skorpio.md](docs/01-terminal-skorp
   pour viser la colonne « retirer », puis `↓` et `Entrée` devant chaque article
   sorti — sans ouvrir une seule fiche. La liste étant triée par échéance, ce qui
   presse est en haut.
-- **`F1`, `F2`, `F3`** mènent toujours au même endroit, depuis n'importe quel
-  écran : tout le frigo, l'accueil, les réglages.
+- **`F1`, `F2`, `F3`, `F4`** mènent toujours au même endroit, depuis n'importe
+  quel écran : tout le frigo, l'accueil, les réglages, la liste de courses.
 - **Si le programme s'arrête**, la trace complète est écrite dans
   `inventaire-erreur.txt`, à côté de l'exécutable. Sur un terminal sans console ni
   débogueur, c'est la seule façon de savoir ce qui s'est passé.
@@ -266,13 +278,15 @@ python3 -m venv .venv
 
 Deuxième processus, deuxième port. `serveur.py` écrit, celui-ci montre. Les
 deux ne partagent qu'un fichier SQLite, et rien ne les oblige à démarrer ni à
-tomber ensemble. Détail complet : **[docs/04-vitrine.md](docs/04-vitrine.md)**.
+tomber ensemble. Cinq vues, un thème clair ou sombre, et une **liste de
+courses** que le terminal et le site alimentent tous les deux. Détail complet :
+**[docs/04-vitrine.md](docs/04-vitrine.md)**.
 
 ```
   ┌──────────────────────────────────────────────────────────────────┐
-  │ FRIGO  poste de contrôle      ⌕ chercher...     ● R7  23:04:11   │
+  │ INVENTAIRE  poste de contrôle   ⌕ chercher...   ☾ ● R7  23:04:11 │
   ├──────────────────────────────────────────────────────────────────┤
-  │ TABLEAU   FRIGO   STOCK ⑦   FLUX   MACHINE                       │
+  │ TABLEAU   FRIGO   STOCK ⑦   COURSES ③   FLUX                     │
   ├──────────────────────────────────────────────────────────────────┤
   │  116      30      49       7        138 096     62,9             │
   │  unités   réfs    lots     périmé   kcal        fraîcheur        │
@@ -312,6 +326,66 @@ tomber ensemble. Détail complet : **[docs/04-vitrine.md](docs/04-vitrine.md)**.
   l'historique du niveau.
 - **Responsive**, du téléphone à l'écran large, et pilotable au clavier :
   `1` à `5` pour les vues, `/` pour chercher, `Échap` pour sortir.
+
+## La liste de courses
+
+Le geste qui compte : il ne reste plus de beurre, on bippe le paquet vide
+au-dessus de la poubelle, et c'est inscrit. Pas de menu, pas de clavier — la
+gâchette suffit, comme pour le reste.
+
+```
+   ┌──────────────────────────────────┐
+   │ < Liste de courses      12:39    │
+   ├──────────────────────────────────┤
+   │ ☐  oeufs                    ×6  ✕│
+   │ ☐  🖼 Nutella                   ✕│
+   │       Nutella · 400 g e          │
+   │ ☑  b̶e̶u̶r̶r̶e̶ ̶d̶e̶m̶i̶-̶s̶e̶l̶              ✕│
+   ├──────────────────────────────────┤
+   │ 7 à prendre · 1 au panier        │
+   │ Bippez pour inscrire · 9 vide    │
+   └──────────────────────────────────┘
+```
+
+La même liste sur le terminal (`F4`), sur le site public (onglet **COURSES**)
+et dans le serveur MCP. Cocher plutôt que supprimer : un article coché reste
+visible, barré, jusqu'à ce qu'on vide le panier — c'est ce qui permet de
+vérifier qu'on n'a rien oublié avant la caisse.
+
+Un article rebippé voit sa quantité augmenter au lieu d'apparaître deux fois.
+Ce qui n'a pas de code-barres — le pain, la salade — se tape sur le site, ou
+au pavé alphanumérique quand le terminal en a un.
+
+**La liste ne se déduit pas du stock.** Un pot de moutarde entamé y a sa place
+alors qu'il est en stock ; un surplus de yaourts n'y en a aucune. Seul un
+humain — ou le modèle à qui on demande un menu — sait. Le site propose bien des
+suggestions, à partir de ce qui manque ou périme, mais il faut cliquer.
+
+## Le frigo comme outil pour un LLM
+
+```bash
+.venv/bin/python backend/mcp.py                # écoute 0.0.0.0:8082
+```
+
+Troisième processus, troisième port. Il parle le **Model Context Protocol** :
+un modèle local — Ollama, LM Studio, n'importe quel client MCP — interroge le
+frigo lui-même au lieu qu'on lui recopie l'inventaire dans son invite.
+
+```json
+{"mcpServers": {"frigo": {"type": "http",
+                          "url": "http://192.168.1.24:8082/mcp"}}}
+```
+
+Sept outils, trois ressources, trois invites toutes faites — « une recette avec
+ce que j'ai », « un menu pour la semaine », « sauver ce qui va périmer ». Le
+modèle lit du texte, pas du JSON : `2x Nutella (Ferrero) 400 g - périme dans
+5 j [Nutri-Score E]` se raisonne mieux, et coûte moins de jetons, qu'une
+structure imbriquée.
+
+Il lit la base en `mode=ro`, comme le site. Le seul outil qui écrit — inscrire
+un article sur la liste de courses — relaie au serveur du terminal. **Un modèle
+ne peut donc pas vider un frigo, seulement proposer d'y remettre quelque
+chose.** Détail complet : **[docs/06-mcp.md](docs/06-mcp.md)**.
 
 ## L'API
 
@@ -360,8 +434,7 @@ Chaque réponse porte `aujourdhui=` et `heure=` : c'est l'horloge du terminal.
 ## En production
 
 ```bash
-./build.sh          # produit dist/, servi au terminal sur /telecharger
-./demarrer.sh       # prépare, construit, démarre, vérifie
+./demarrer.sh       # prépare, construit, compile le client, démarre, vérifie
 ```
 
 ```
@@ -369,9 +442,10 @@ en service.
 
     http://192.168.1.24:8080/    <- à saisir dans les réglages du terminal
     http://192.168.1.24:8081/    le site public
+    http://192.168.1.24:8082/mcp serveur MCP, pour le LLM local
 ```
 
-`demarrer.sh` ne fait rien que `docker-compose.yml` ne sache faire : il prépare
+`demarrer.sh` ne fait rien que `compose.yaml` ne sache faire : il prépare
 ce que compose suppose déjà prêt. Un dépôt fraîchement cloné n'a ni `.env`, ni
 `backend/donnees/`, ni `dist/` — et laisser Docker créer ces dossiers lui-même
 les rend à `root`, ce que personne ne remarque avant la première panne. Le
@@ -379,8 +453,10 @@ script choisit le moteur disponible (docker ou podman, avec ou sans greffon
 compose), relève l'UID et le fuseau de la machine, crée ce qui manque, puis
 attend que les deux sondes répondent.
 
-Une seule image pour les deux rôles. Deux montages liés : `backend/donnees/` en
-écriture, `dist/` en lecture seule. Pas de volume nommé — la base reste
+Quatre conteneurs autour d'un seul fichier SQLite. `client` compile le binaire
+du terminal puis s'arrête ; `serveur` écrit la base ; `vitrine` et `mcp` la
+lisent. Une seule image pour les trois services Python, et une seconde, à base
+de `mono-devel`, pour la compilation. Pas de volume nommé — la base reste
 consultable depuis l'hôte, `sqlite3` compris. Les conteneurs tournent sans
 root, racine en lecture seule, sans aucune capacité Linux.
 
@@ -398,25 +474,29 @@ Sans conteneurs, deux unités systemd font le même travail :
 ## Organisation
 
 ```
-build.sh                      conteneur de compilation -> dist/
 demarrer.sh                   prépare et lance la pile de production
-Dockerfile                    image unique des deux services Python
-docker-compose.yml            les deux services, montages liés, durcissement
+Dockerfile                    image unique des trois services Python
+compose.yaml                  les quatre conteneurs, montages liés, durcissement
 .env.exemple                  réglages de production, à copier en .env
 docker/
+  Dockerfile.client           mono-devel : compile le client, puis s'arrête
   entree.sh                   un rôle -> une ligne de commande
   sante.py                    sonde de santé : le corps JSON, pas le seul 200
 backend/
   serveur.py                  point d'entrée du serveur du terminal (:8080)
   vitrine.py                  point d'entrée du site public (:8081)
+  mcp.py                      point d'entrée du serveur MCP (:8082)
   inventaire/
     api.py                    routage HTTP, validation des paramètres
     db.py                     SQLite : lots, produits, journal
     off.py                    Open Food Facts + cache autoritaire
-    images.py                 HTTPS -> BMP 24 bits, cache mémoire + disque
+    images.py                 HTTPS -> BMP palettisé, préchauffé en tâche de fond
     codebarres.py             clés de contrôle EAN/UPC, réparation d'un code amputé
     rendu.py                  une structure, deux sorties (JSON et clé=valeur)
     web.py                    tableau de bord et page de téléchargement
+    mcp/                      le serveur MCP, en lecture seule
+      outils.py               ce qu'un modèle peut demander au frigo
+      application.py          JSON-RPC 2.0 et la table des méthodes
     vitrine/                  le site public, en lecture seule
       lecture.py              SQLite en mode=ro, détection de changement
       mesures.py              KPI, séries, classements, curiosités
@@ -440,10 +520,10 @@ frontend/
   refs/wince/                 .asmmeta de surface d'API Windows CE
   build/compiler.sh           compilation en trois passes
   tools/                      extraction des assemblies, contrôles
-tests/                        152 tests
+tests/                        177 tests
 docs/                         mise en service, réseau, API, site public,
-                              production
-.github/workflows/ci.yml      tests sur 3.11 à 3.13, puis la pile complète
+                              production, MCP
+.github/workflows/ci.yml      tests sur 3.11 à 3.14, puis la pile complète
 ```
 
 ## Tests
@@ -465,10 +545,15 @@ Ce qui a été **exécuté et vérifié** :
 
 - le serveur de bout en bout, y compris contre l'API publique d'Open Food
   Facts en direct ;
-- 152 tests : fusion des lots, sorties FEFO, normalisation des fiches, couche
-  HTTP, contrat de clés C# ↔ Python, et tout le site public ;
-- la conversion des photos : BMP 24 bits non compressé, en-tête de 54 octets,
-  aux dimensions exactes demandées ;
+- 177 tests : fusion des lots, sorties FEFO, normalisation des fiches, couche
+  HTTP, contrat de clés C# ↔ Python, liste de courses, tout le site public, et
+  le protocole MCP ;
+- la conversion des photos : BMP palettisé 8 bits aux dimensions exactes
+  demandées, relu octet par octet et comparé pixel à pixel — 40 000 pixels,
+  aucun écart — avec ce que décode une bibliothèque de référence ;
+- le préchauffage : la photo part chez Open Food Facts dès la résolution de la
+  fiche, si bien que la demande du terminal est servie en 8 ms au lieu
+  d'attendre le téléchargement ;
 - la compilation du client, langage bridé en ISO-2, sans aucune API hors de la
   surface publique du Compact Framework 2.0 ;
 - les en-têtes du binaire : runtime CLI 2.5, métadonnées `v2.0.50727`,
@@ -478,8 +563,13 @@ Ce qui a été **exécuté et vérifié** :
   Mono, fenêtre de 240 × 320, scénario complet contre un vrai serveur — bip,
   fiche produit, photo, fiche Open Food Facts détaillée et son défilement,
   sélection puis suppression d'un lot, retrait FEFO, durée habituelle proposée,
-  ajout, navigation dans le frigo avec retrait à la ligne, réglages, produit
-  inconnu. Les 16 captures sont dans `dist/apercu/` ;
+  ajout, navigation dans le frigo avec retrait à la ligne, liste de courses
+  alimentée au code-barres puis cochée, réglages, produit inconnu. Les 22
+  captures sont dans `dist/apercu/` ;
+- **la pile de production entière**, depuis un dépôt fraîchement cloné :
+  compilation du client en conteneur, les trois services sains, une écriture du
+  serveur relue par le site, et un article inscrit par le serveur MCP qui
+  apparaît sur l'écran du terminal ;
 - **la lecture du code-barres, à quatre cadences** : 30 ms et 5 ms par
   caractère avec suffixe `Entrée`, 30 ms sans suffixe, et 150 ms en frappe
   lente. Les quatre rendent les treize chiffres, vérifiés caractère par

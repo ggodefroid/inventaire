@@ -4,7 +4,7 @@
 # site public. Ce qui les distingue -- port, droit d'ecrire, sonde -- est
 # decide au demarrage par docker-compose.yml.
 
-ARG PYTHON=3.13
+ARG PYTHON=3.14
 
 # --------------------------------------------------------------- assemblage
 

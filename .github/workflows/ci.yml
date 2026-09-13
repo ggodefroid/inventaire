@@ -14,10 +14,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.11", "3.12", "3.13"]
+        python: ["3.11", "3.12", "3.13", "3.14"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
       - run: pip install -r requirements.txt
@@ -27,12 +27,19 @@ jobs:
     name: Pile de production
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Le parcours d'un depot fraichement clone : ni .env, ni donnees, ni
-      # dist. C'est demarrer.sh qui doit tout preparer.
+      # dist. demarrer.sh doit tout preparer, compilation du client comprise.
       - name: ./demarrer.sh
         run: ./demarrer.sh
+
+      - name: Le conteneur client a produit le binaire du terminal
+        run: |
+          test -s dist/Inventaire.exe
+          test -s dist/version.txt
+          curl -fsS "http://127.0.0.1:8080/api/maj" \
+            | python3 -c "import json,sys; d=json.load(sys.stdin); print(d); raise SystemExit(0 if d['disponible'] else 1)"
 
       - name: Le serveur ecrit, la vitrine relit
         run: |
@@ -42,10 +49,17 @@ jobs:
           curl -fsS -o etat.json http://127.0.0.1:8081/api/etat
           python3 -c "import json; u = json.load(open('etat.json'))['compteurs']['unites']; print('unites vues par la vitrine :', u); raise SystemExit(0 if u >= 2 else 1)"
 
+      - name: Le serveur MCP repond a un client
+        run: |
+          curl -fsS -X POST -H 'Content-Type: application/json' -o mcp.json \
+            -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"resume","arguments":{}}}' \
+            http://127.0.0.1:8082/mcp
+          python3 -c "import json; t = json.load(open('mcp.json'))['result']['content'][0]['text']; print(t); raise SystemExit(0 if 'Frigo' in t else 1)"
+
       - name: Arret propre
         run: |
           docker compose stop
-          for service in frigo-serveur frigo-vitrine; do
+          for service in frigo-serveur frigo-vitrine frigo-mcp; do
             code="$(docker inspect -f '{{.State.ExitCode}}' "$service")"
             echo "$service : exit $code"
             [ "$code" = 0 ]

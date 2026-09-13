@@ -3,15 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Frigo · poste de contrôle</title>
+<title>Inventaire · poste de contrôle</title>
 <meta name="description" content="Inventaire d'un réfrigérateur relevé au terminal code-barres. {{ unites }} unités, {{ references }} références, en direct.">
-<meta name="color-scheme" content="dark">
-<meta name="theme-color" content="#04070d">
-<meta property="og:title" content="Frigo · poste de contrôle">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#04070d" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f6f8" media="(prefers-color-scheme: light)">
+<meta property="og:title" content="Inventaire · poste de contrôle">
 <meta property="og:description" content="{{ unites }} unités, {{ references }} références. Relevé en direct depuis un terminal Datalogic Skorpio de 2005.">
 <meta property="og:type" content="website">
 <link rel="icon" href="/favicon.ico">
 <link rel="stylesheet" href="{{ url_for('static', filename='vitrine.css') }}">
+<script>
+  // Avant le premier pixel : sinon la page s'affiche en sombre puis bascule.
+  try { var t = localStorage.getItem("frigo-theme");
+        if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
 </head>
 <body data-version="{{ version }}">
 
@@ -24,7 +30,7 @@
       <svg viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="2"/><path d="M6 10.5h12"/><path d="M9 6v2.6M9 13v2.6"/></svg>
     </span>
     <span class="marque-texte">
-      <b>FRIGO</b>
+      <b>INVENTAIRE</b>
       <small>poste de contrôle</small>
     </span>
   </a>
@@ -41,6 +47,11 @@
     <span class="revision" id="revision">r0</span>
   </div>
 
+  <button class="theme" id="theme" type="button" aria-label="Changer de thème" title="Thème clair ou sombre">
+    <svg class="soleil" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.4M12 19v2.4M21.4 12H19M5 12H2.6M18.7 5.3l-1.7 1.7M7 17l-1.7 1.7M18.7 18.7L17 17M7 7L5.3 5.3"/></svg>
+    <svg class="lune" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.2A8.4 8.4 0 0 1 9.8 4 8.4 8.4 0 1 0 20 14.2z"/></svg>
+  </button>
+
   <time class="horloge" id="horloge">--:--:--</time>
 </header>
 
@@ -48,8 +59,8 @@
   <button class="onglet actif" data-vue="bord"><span>TABLEAU</span></button>
   <button class="onglet" data-vue="frigo"><span>FRIGO</span></button>
   <button class="onglet" data-vue="stock"><span>STOCK</span><i class="pastille" id="pastille-stock"></i></button>
+  <button class="onglet" data-vue="courses"><span>COURSES</span><i class="pastille" id="pastille-courses"></i></button>
   <button class="onglet" data-vue="flux"><span>FLUX</span></button>
-  <button class="onglet" data-vue="machine"><span>MACHINE</span></button>
 </nav>
 
 <main>
@@ -181,22 +192,44 @@
     </div>
   </section>
 
-  <!-- ========================================================= MACHINE -->
-  <section class="vue" id="vue-machine">
-    <div class="grille-machine">
-      <article class="carte">
-        <header><h3>Chaîne</h3><small>du carton au navigateur</small></header>
-        <pre class="schema" id="schema"></pre>
-      </article>
-      <article class="carte">
-        <header><h3>Ce processus</h3><small>site public, lecture seule</small></header>
-        <dl class="paires" id="machine"></dl>
-      </article>
+  <!-- ========================================================= COURSES -->
+  <section class="vue" id="vue-courses">
+
+    <form class="ajout-course" id="ajout-course" autocomplete="off">
+      <input id="course-libelle" type="text" maxlength="80"
+             placeholder="ajouter un article — ou son code-barres"
+             aria-label="Article à ajouter">
+      <input id="course-qte" type="number" min="1" max="99" value="1"
+             aria-label="Quantité">
+      <button type="submit" class="primaire">Ajouter</button>
+      <button type="button" id="course-vider" class="mini" title="Retirer du panier ce qui est coché">Vider le panier</button>
+    </form>
+
+    <p class="note relais" id="course-relais" hidden></p>
+
+    <div class="grille-courses">
       <article class="carte large">
-        <header><h3>Console</h3><small>événements reçus</small></header>
-        <ol class="console" id="console"></ol>
+        <header>
+          <h3>À prendre</h3>
+          <small id="course-compte">—</small>
+        </header>
+        <ul class="courses" id="courses-a-prendre"></ul>
+      </article>
+      <article class="carte">
+        <header>
+          <h3>Dans le panier</h3>
+          <small>cochés, effaçables d'un geste</small>
+        </header>
+        <ul class="courses panier" id="courses-panier"></ul>
       </article>
     </div>
+
+    <h2 class="titre-section">
+      <span class="num">07</span> Suggestions
+      <small>ce qui manque bientôt, d'après le stock — un clic l'ajoute</small>
+    </h2>
+    <div class="puces suggestions" id="suggestions-courses"></div>
+
   </section>
 
 </main>

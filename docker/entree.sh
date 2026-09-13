@@ -2,7 +2,8 @@
 # Point d'entree de l'image : un role, une ligne de commande.
 #
 #   serveur    backend/serveur.py, le serveur du terminal (:8080)
-#   vitrine    l'application Flask servie par gunicorn (:8081)
+#   vitrine    le site public, servi par gunicorn (:8081)
+#   mcp        le serveur MCP pour un LLM local, servi par gunicorn (:8082)
 #   <autre>    execute tel quel (python, sh, ...)
 #
 # Tout est `exec` : le processus Python devient PID 1 et recoit les signaux
@@ -29,7 +30,7 @@ actif() {
 verifier_acces() {
   if [ ! -d "$donnees" ]; then
     echo "entree.sh : $donnees n'existe pas dans le conteneur." >&2
-    echo "  le montage de backend/donnees/ manque dans docker-compose.yml" >&2
+    echo "  le montage de backend/donnees/ manque dans compose.yaml" >&2
     exit 1
   fi
   [ -w "$donnees" ] && return 0
@@ -49,6 +50,41 @@ entree.sh : $donnees n'est pas accessible en ecriture.
   Ou, plus simplement :  ./demarrer.sh
 MESSAGE
   exit 1
+}
+
+# La base est creee par serveur.py. `depends_on` suffit normalement ; sans lui
+# -- un service lance seul -- mieux vaut patienter que fabriquer un fichier
+# vide et le trouver sans tables.
+attendre_la_base() {
+  attente=0
+  while [ ! -f "$db" ] && [ "$attente" -lt 30 ]; do
+    [ "$attente" = 0 ] && echo "en attente de $db (creee par le serveur)..."
+    sleep 1
+    attente=$((attente + 1))
+  done
+}
+
+# Un seul worker : la vitrine tient son thread de veille dans le processus, et
+# deux workers feraient deux veilles sur la meme base. Les fils, eux, comptent
+# -- une WebSocket occupe le sien tant que l'onglet reste ouvert.
+# --no-control-socket : gunicorn 26 ouvrirait une socket de pilotage dans /app,
+# que la racine en lecture seule refuse.
+servir() {
+  port="$1"; application="$2"; shift 2
+  exec gunicorn \
+      --bind "${FRIGO_ADRESSE:-0.0.0.0}:$port" \
+      --workers 1 \
+      --worker-class gthread \
+      --threads "${FRIGO_FILS:-32}" \
+      --worker-tmp-dir /dev/shm \
+      --no-control-socket \
+      --timeout 120 \
+      --graceful-timeout 10 \
+      --access-logfile - \
+      --error-logfile - \
+      --log-level "${FRIGO_NIVEAU:-info}" \
+      "$@" \
+      "$application"
 }
 
 case "$role" in
@@ -73,35 +109,14 @@ case "$role" in
 
   vitrine)
     verifier_acces
-    # La base est creee par serveur.py. `depends_on` suffit normalement ; sans
-    # lui -- vitrine lancee seule -- mieux vaut patienter que fabriquer un
-    # fichier vide et le trouver sans tables.
-    attente=0
-    while [ ! -f "$db" ] && [ "$attente" -lt 30 ]; do
-      [ "$attente" = 0 ] && echo "en attente de $db (cree par le serveur)..."
-      sleep 1
-      attente=$((attente + 1))
-    done
+    servir "${FRIGO_PORT:-8081}" \
+        "inventaire.vitrine:creer_app(journal_max=${FRIGO_JOURNAL:-120})" "$@"
+    ;;
 
-    # Un seul worker : le thread de veille vit dans le processus, et deux
-    # workers feraient deux veilles sur la meme base. Les fils, eux, comptent
-    # -- une WebSocket occupe le sien tant que l'onglet reste ouvert.
-    # --no-control-socket : gunicorn 26 ouvrirait une socket de pilotage dans
-    # /app, que la racine en lecture seule refuse.
-    exec gunicorn \
-        --bind "${FRIGO_ADRESSE:-0.0.0.0}:${FRIGO_PORT:-8081}" \
-        --workers 1 \
-        --worker-class gthread \
-        --threads "${FRIGO_FILS:-32}" \
-        --worker-tmp-dir /dev/shm \
-        --no-control-socket \
-        --timeout 120 \
-        --graceful-timeout 10 \
-        --access-logfile - \
-        --error-logfile - \
-        --log-level "${FRIGO_NIVEAU:-info}" \
-        "$@" \
-        "inventaire.vitrine:creer_app(journal_max=${FRIGO_JOURNAL:-120})"
+  mcp)
+    verifier_acces
+    attendre_la_base
+    servir "${FRIGO_PORT:-8082}" "inventaire.mcp:creer_app()" "$@"
     ;;
 
   *)

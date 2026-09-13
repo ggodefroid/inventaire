@@ -1,18 +1,32 @@
 """Les routes du site public : Flask pour les pages, flask-sock pour le flux.
 
-Rien ici n'ecrit. Les seules methodes declarees sont des GET, la base est
-ouverte en `mode=ro` et la connexion porte `PRAGMA query_only` : ce qui est
-expose sur Internet ne peut pas vider un frigo, meme en cas de faute de frappe
-dans une route. Un test parcourt la table de routage et echoue si un POST y
-apparait.
+**Ce processus n'ecrit jamais dans la base.** Elle est ouverte en `mode=ro` et
+la connexion porte `PRAGMA query_only` : ce qui est expose sur Internet ne peut
+pas vider un frigo, meme en cas de faute de frappe dans une route. Un test
+parcourt la table de routage et verifie qu'aucune route sortant de
+`/api/courses/` n'accepte autre chose qu'un GET.
+
+La liste de courses est la seule exception, et elle ne dement pas la regle :
+cocher un article sur son telephone en faisant les courses est precisement ce
+a quoi sert cet onglet, mais l'ecriture n'a pas lieu ici. La route relaie au
+serveur du terminal, qui reste l'unique ecrivain de la base -- meme invariant,
+meme fichier, un seul processus qui y touche. Si le serveur est injoignable, la
+liste reste consultable et l'interface le dit.
+
+Le stock, lui, n'est joignable par aucune route de ce processus : le site
+public ne peut ni ajouter ni retirer une unite du frigo.
 """
 
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import os
 import queue
+import urllib.error
+import urllib.parse
+import urllib.request
 from pathlib import Path
 
 from flask import Flask, Response, jsonify, render_template, request
@@ -47,6 +61,21 @@ CSP = ("default-src 'self'; img-src 'self' data:; "
        "base-uri 'none'; form-action 'none'")
 
 TAILLES_PHOTO = (64, 96, 128, 192, 256, 320)
+
+# Le serveur du terminal, seul ecrivain. Sous compose, `serveur` est le nom du
+# service ; hors conteneur, c'est la boucle locale.
+SERVEUR_PAR_DEFAUT = "http://127.0.0.1:8080"
+
+# Liste blanche stricte : une action, et les parametres qu'elle accepte. Rien
+# d'autre ne franchit le relais -- surtout pas une chaine de requete recopiee
+# telle quelle.
+ACTIONS_COURSES = {
+    "ajouter": ("code", "libelle", "qte", "note"),
+    "cocher": ("id", "pris"),
+    "retirer": ("id", "qte"),
+    "vider": ("tout",),
+}
+DELAI_RELAIS = 6.0
 
 
 def creer_app(*, db=None, cache=None, agent: str = AGENT,
@@ -122,6 +151,52 @@ def creer_app(*, db=None, cache=None, agent: str = AGENT,
     def api_journal():
         limite = request.args.get("limite", type=int) or journal_max
         return jsonify({"lignes": lecture.journal(max(1, min(limite, 2000)))})
+
+    # ------------------------------------------------------------- courses
+
+    serveur = (os.environ.get("FRIGO_SERVEUR") or SERVEUR_PAR_DEFAUT).rstrip("/")
+
+    @app.get("/api/courses")
+    def api_courses():
+        return jsonify({"articles": lecture.courses()})
+
+    @app.post("/api/courses/<action>")
+    def api_courses_action(action: str):
+        """Relais vers le serveur du terminal, seul ecrivain de la base.
+
+        Ce processus ne fait que recopier une poignee de parametres valides
+        vers une URL qu'il construit lui-meme. Il n'ouvre aucune connexion en
+        ecriture, et le stock du frigo n'est atteignable par aucune des quatre
+        actions permises.
+        """
+        attendus = ACTIONS_COURSES.get(action)
+        if attendus is None:
+            return jsonify({"ok": 0, "erreur": "action inconnue"}), 404
+
+        parametres = {"origine": "web"}
+        for nom in attendus:
+            valeur = (request.values.get(nom) or "").strip()
+            if valeur:
+                parametres[nom] = valeur[:120]
+
+        cible = f"{serveur}/api/courses/{action}?" + urllib.parse.urlencode(parametres)
+        requete = urllib.request.Request(cible, headers={"Accept": "application/json"})
+        try:
+            with urllib.request.urlopen(requete, timeout=DELAI_RELAIS) as reponse:
+                charge = json.loads(reponse.read(65536) or b"{}")
+        except (urllib.error.URLError, TimeoutError, OSError, ValueError) as exc:
+            log.info("relais vers %s injoignable : %s", serveur, exc)
+            return jsonify({
+                "ok": 0,
+                "erreur": "le serveur du terminal ne repond pas ; "
+                          "la liste reste consultable",
+            }), 503
+
+        # La veille met jusqu'a une seconde a voir le changement dans SQLite.
+        # Recalculer tout de suite evite que le navigateur recoive un
+        # instantane anterieur a sa propre action.
+        veille.rafraichir_et_pousser()
+        return jsonify(charge)
 
     # -------------------------------------------------------------- photos
 

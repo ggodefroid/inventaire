@@ -256,7 +256,7 @@ verrouille le reste par le système de fichiers : la base ne peut plus être
 écrite même si tout le reste tombait.
 
 Publier le site **n'expose pas** le serveur du terminal. Le port 8080 reste
-derrière le pare-feu ; seul 8081 sort, et il ne sait pas écrire.
+derrière le pare-feu ; seul 8081 sort, et il ne sait pas écrire dans la base.
 
 ## 4.7 Sur la page
 
@@ -271,9 +271,28 @@ Cinq vues, accessibles au clavier par les touches `1` à `5`.
   fiche.
 - **Stock** : toutes les références, filtrables par échéance, triables par huit
   critères.
+- **Courses** : la liste de courses, partagée avec le terminal. On coche en
+  faisant les courses, on ajoute un article en le tapant ou en collant son
+  code-barres, et les suggestions proposent ce qui manque ou périme.
 - **Flux** : le journal des mouvements, et ce qui presse.
-- **Machine** : la chaîne, l'état du processus, la console des événements
-  reçus.
+
+Un bouton dans l'en-tête bascule entre **thème sombre et thème clair**. Le
+sombre reste le défaut — la page est un afficheur — mais une liste de courses
+se lit en plein soleil, et c'est exactement le moment où un fond noir ne se lit
+plus. Sans choix explicite, la page suit la préférence du système ; le choix
+est ensuite retenu. Les couleurs de données — Nutri-Score, NOVA, urgences — ne
+bougent pas d'un thème à l'autre : ce sont des codes, pas de la décoration.
+
+### La liste de courses, seule route qui n'est pas un GET
+
+Cocher un article modifie quelque chose, et ce processus n'écrit pas. La route
+`POST /api/courses/<action>` **relaie au serveur du terminal**, qui reste
+l'unique écrivain de la base ; quatre actions sont permises, et rien d'autre
+ne franchit le relais. Le stock demeure hors de portée : aucune route de ce
+processus ne peut ajouter ni retirer une unité du frigo.
+
+Si le serveur du terminal est arrêté, la liste reste consultable et la page le
+dit. `FRIGO_SERVEUR` désigne le relais ; sous compose, c'est `http://serveur:8080`.
 
 La recherche (`/` pour y aller) porte sur le nom, la marque, le code, les
 catégories, les labels, l'origine et les allergènes. Elle filtre le stock et

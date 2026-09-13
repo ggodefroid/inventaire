@@ -9,31 +9,35 @@ C'est une alternative aux deux unités systemd de
 
 ```
   hôte Linux
-  ┌─────────────────────────────────────────────────────────────────┐
-  │   frigo-serveur  :8080            frigo-vitrine  :8081          │
-  │  ┌────────────────────┐          ┌────────────────────┐         │
-  │  │ serveur.py         │          │ gunicorn           │         │
-  │  │ écrit              │          │ lit  (query_only)  │         │
-  │  │ racine en RO       │          │ racine en RO       │         │
-  │  └────────┬───────────┘          └─────────┬──────────┘         │
-  │           │  /donnees                      │  /donnees          │
-  │           └───────────────┬────────────────┘                    │
-  │                           ▼                                     │
-  │              ./backend/donnees/   (montage lié)                 │
-  └─────────────────────────────────────────────────────────────────┘
-       ▲                                    ▲
-       │ Wi-Fi, HTTP simple                 │ navigateurs
-    terminal Skorpio                        de la maison
+  ┌────────────────────────────────────────────────────────────────────┐
+  │  frigo-client                                                      │
+  │  mono-devel → dist/Inventaire.exe, puis s'arrête                   │
+  │       │ les autres attendent qu'il ait fini                        │
+  │       ▼                                                            │
+  │  :8080 serveur      :8081 vitrine       :8082 mcp                  │
+  │  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐            │
+  │  │ écrit        │   │ lit (ro)     │   │ lit (ro)     │            │
+  │  │ racine RO    │   │ racine RO    │   │ racine RO    │            │
+  │  └──────┬───────┘   └──────┬───────┘   └──────┬───────┘            │
+  │         │  /donnees        │                  │                    │
+  │         └──────────────────┴──────────────────┘                    │
+  │                            ▼                                       │
+  │              ./backend/donnees/   (montage lié)                    │
+  └────────────────────────────────────────────────────────────────────┘
+       ▲                    ▲                    ▲
+       │ Wi-Fi              │ navigateurs        │ LLM local
+    terminal Skorpio        de la maison         (MCP)
 ```
 
-Aucun réseau partagé entre les deux conteneurs : ils ne se parlent pas. Leur
-seul point commun est un fichier.
+`serveur` est le seul écrivain. `vitrine` et `mcp` ouvrent la base en
+`mode=ro` ; leurs rares écritures — cocher un article de la liste de courses —
+lui sont relayées en HTTP, par `FRIGO_SERVEUR`. Un seul processus touche au
+fichier.
 
 ## 5.1 Mise en route
 
 ```bash
-./build.sh          # produit dist/, servi au terminal sur /telecharger
-./demarrer.sh       # prépare, construit, démarre, vérifie
+./demarrer.sh       # prépare, compile le client, construit, démarre, vérifie
 ```
 
 ```
@@ -41,9 +45,10 @@ en service.
 
     http://192.168.1.24:8080/    <- à saisir dans les réglages du terminal
     http://192.168.1.24:8081/    le site public
+    http://192.168.1.24:8082/mcp serveur MCP, pour le LLM local
 ```
 
-`demarrer.sh` ne fait rien que `docker-compose.yml` ne sache faire : il prépare
+`demarrer.sh` ne fait rien que `compose.yaml` ne sache faire : il prépare
 ce que compose suppose déjà prêt. Un dépôt fraîchement cloné n'a ni `.env`, ni
 `backend/donnees/`, ni `dist/` — et laisser Docker créer ces dossiers lui-même
 les rend à `root`, ce que personne ne remarque avant la première panne.
@@ -55,9 +60,10 @@ répondent.
 
 ```bash
 ./demarrer.sh --etat        # état des services
-./demarrer.sh --journaux    # suit les deux journaux
+./demarrer.sh --journaux    # suit les journaux
+./demarrer.sh --apercu      # photographie les écrans du client -> dist/apercu/
 ./demarrer.sh --arreter     # arrête sans rien supprimer
-./demarrer.sh --nettoyer    # supprime conteneurs et image ; les données restent
+./demarrer.sh --nettoyer    # supprime conteneurs et images ; les données restent
 ```
 
 Sans le script, tout marche aussi, à condition de préparer soi-même :
@@ -110,7 +116,7 @@ FRIGO_GID=0
 
 Sur Fedora, RHEL et partout où podman est en jeu, un montage lié non étiqueté
 est refusé sans explication utile. Les volumes portent donc `:z` dans
-`docker-compose.yml` — ignoré là où SELinux est absent, indispensable ailleurs.
+`compose.yaml` — ignoré là où SELinux est absent, indispensable ailleurs.
 
 ## 5.3 Les montages
 
@@ -123,9 +129,9 @@ Des montages liés, pas des volumes nommés : la base doit rester consultable
 sans Docker. `sqlite3 backend/donnees/inventaire.db`, une copie, une
 restauration — tout se fait depuis l'hôte, conteneurs arrêtés ou non.
 
-Un `dist/` vide n'empêche rien : `/api/maj` répond `disponible=0` et le
-terminal ne se voit proposer aucune mise à jour. `./build.sh` le remplit, et le
-conteneur le voit immédiatement — le montage est vivant, aucun redémarrage.
+`dist/` est rempli par le conteneur `client` à chaque lancement de la pile,
+et monté en lecture seule dans `serveur`, qui le sert au terminal. Il n'y a
+plus rien à compiler à la main.
 
 ### Pourquoi la vitrine monte la base en écriture
 
@@ -167,8 +173,15 @@ de commande différente.
 ```
 docker/entree.sh serveur     ->  python backend/serveur.py --adresse … --port …
 docker/entree.sh vitrine     ->  gunicorn … 'inventaire.vitrine:creer_app(…)'
+docker/entree.sh mcp         ->  gunicorn … 'inventaire.mcp:creer_app()'
 docker/entree.sh <autre>     ->  exécuté tel quel (python, sh, …)
 ```
+
+Une seconde image, `docker/Dockerfile.client`, porte `mono-devel` et compile le
+binaire du terminal. Elle n'a rien en commun avec la première et ne tourne
+jamais en service : compose la lance, elle écrit dans `dist/` et s'arrête. Son
+second étage ajoute un serveur X virtuel pour photographier les écrans
+(`./demarrer.sh --apercu`), et ne fait pas partie de la pile ordinaire.
 
 Deux étages de construction. Le premier installe les dépendances dans un
 virtualenv, le second le recopie d'un bloc : l'image livrée n'a ni `pip`, ni
@@ -217,9 +230,11 @@ Tout est dans `.env` (voir `.env.exemple`). Rien n'est obligatoire.
 | `FRIGO_IP` | `0.0.0.0` | interface de publication |
 | `FRIGO_PORT_SERVEUR` | `8080` | port du serveur du terminal, côté hôte |
 | `FRIGO_PORT_VITRINE` | `8081` | port du site public, côté hôte |
+| `FRIGO_PORT_MCP` | `8082` | port du serveur MCP, côté hôte |
 | `FRIGO_HORS_LIGNE` | `0` | `1` : ne jamais interroger Open Food Facts |
 | `FRIGO_VERBEUX` | `0` | `1` les requêtes, `2` tout |
 | `FRIGO_FILS` | `32` | fils du site : un par onglet connecté |
+| `FRIGO_FILS_MCP` | `8` | fils du serveur MCP : un par appel d'outil simultané |
 | `FRIGO_JOURNAL` | `120` | mouvements envoyés au navigateur à la connexion |
 | `FRIGO_TAG` | `1.0.0` | étiquette de l'image construite |
 
@@ -265,8 +280,10 @@ remettre en `backend/donnees/inventaire.db`, conteneurs arrêtés, pour restaure
 - **TLS.** Le compose ne publie que du HTTP simple, et c'est volontaire : le
   terminal n'a qu'une pile TLS de 2005. Si le **site** doit sortir de la
   maison, mettez Caddy ou nginx devant le port 8081 seulement
-  ([docs/04 §4.6](04-vitrine.md#46-publier-sur-internet)). Le 8080 reste
-  derrière le pare-feu.
+  ([docs/04 §4.6](04-vitrine.md#46-publier-sur-internet)). Les ports 8080 et
+  **8082 restent derrière le pare-feu** : ni l'un ni l'autre n'a
+  d'authentification, et le second laisserait allonger la liste de courses à
+  qui le trouve ([docs/06 §6.5](06-mcp.md#65-sous-compose)).
 - **Démarrer avec la machine.** `restart: unless-stopped` suppose que le démon
   démarre au boot : `sudo systemctl enable docker`.
 
@@ -280,5 +297,5 @@ remettre en `backend/donnees/inventaire.db`, conteneurs arrêtés, pour restaure
 | `address already in use` | un `python3 backend/serveur.py` tourne déjà, ou changez `FRIGO_PORT_SERVEUR` |
 | Le terminal ne joint rien, `curl` local marche | pare-feu de l'hôte ([docs/02](02-reseau.md)) |
 | Dates et heures décalées | `TZ` absent de `.env` — §5.4 |
-| `/telecharger` dit `disponible=0` | `dist/` est vide : lancez `./build.sh` |
+| `/telecharger` dit `disponible=0` | le conteneur `client` a échoué : `docker compose logs client` |
 | Rien en temps réel sur le site | un proxy coupe la WebSocket ; `proxy_read_timeout` dans [docs/04 §4.6](04-vitrine.md#46-publier-sur-internet) |

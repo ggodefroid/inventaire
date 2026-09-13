@@ -213,7 +213,7 @@ def page_telechargement(application) -> str:
     """
     fichiers = application.inventaire_livrables()
     if not fichiers:
-        liste = ("<p><b>Rien dans dist/.</b><br>Lancez <tt>./build.sh</tt> sur le "
+        liste = ("<p><b>Rien dans dist/.</b><br>Lancez <tt>./demarrer.sh</tt> sur le "
                  "PC, puis rechargez cette page.</p>")
     else:
         lignes = "".join(

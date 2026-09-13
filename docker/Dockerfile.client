@@ -1,0 +1,59 @@
+# syntax=docker/dockerfile:1.7
+#
+# Compilation du client Windows CE. Le conteneur est la pour une seule raison :
+# mono-devel et ses dependances n'ont rien a faire sur un poste de travail
+# moderne juste pour produire un executable de 2005.
+#
+# Il ne tourne pas en service. Compose le lance au demarrage de la pile, il
+# ecrit dans /dist et s'arrete ; les autres attendent qu'il ait fini.
+#
+# Deux etages. Le premier compile, et c'est celui que la pile utilise. Le
+# second ajoute un serveur X virtuel pour photographier les ecrans, ce qui
+# n'a aucune raison d'alourdir l'image de tous les jours :
+#
+#   docker compose --profile apercu run --rm apercu
+
+# --------------------------------------------------------------- compilation
+
+FROM debian:13-slim AS compilation
+
+ARG UID=1000
+ARG GID=1000
+
+# mono-devel pour mcs, python3 pour le controle des en-tetes du binaire produit
+# (frontend/tools/verifier_binaire.py). Rien d'autre.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends mono-devel python3 ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd --gid "$GID" frigo 2>/dev/null || true; \
+    useradd --uid "$UID" --gid "$GID" --no-create-home \
+            --home-dir /src --shell /usr/sbin/nologin frigo 2>/dev/null || true
+
+WORKDIR /src
+# Les sources sont recopiees, pas montees : l'image doit pouvoir compiler seule,
+# et compiler.sh ecrit un Version.cs a cote d'elles.
+COPY frontend/ /src/frontend/
+RUN chown -R "$UID:$GID" /src && mkdir -p /dist && chown "$UID:$GID" /dist
+
+ENV DIST=/dist
+USER $UID:$GID
+
+# `--bureau` ajoute un binaire Mono jouable sous Linux, utile pour eprouver une
+# mise en page sans reposer le terminal sur son socle.
+ENTRYPOINT ["/src/frontend/build/compiler.sh"]
+
+# -------------------------------------------------------------------- apercu
+
+FROM compilation AS apercu
+
+USER root
+# Xvfb tient l'ecran virtuel, xdotool joue le scenario, imagemagick prend la
+# photo. libgdiplus est ce qui manque a Mono pour dessiner hors de Windows.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      xvfb xdotool imagemagick x11-utils fonts-dejavu-core libgdiplus libc6-dev \
+ && rm -rf /var/lib/apt/lists/*
+USER $UID:$GID
+
+ENTRYPOINT ["/src/frontend/build/apercu-conteneur.sh"]

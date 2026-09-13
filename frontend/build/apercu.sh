@@ -2,13 +2,13 @@
 # Capture les ecrans du client, sans terminal.
 #
 # Le binaire livre est pour Windows CE et ne tourne pas ici, mais les memes
-# sources compilent pour Mono de bureau (build.sh --bureau). On les lance dans
+# sources compilent pour Mono de bureau (compiler.sh --bureau). On les lance dans
 # un serveur X virtuel et on photographie chaque ecran. C'est ce qui permet
 # d'eprouver une mise en page en 240x320 sans reposer le terminal sur son socle
 # a chaque essai -- et la seule facon de voir a quoi ressemble un nom de produit
 # de soixante caracteres avant qu'il ne deborde sur le materiel.
 #
-#     ./build.sh --apercu                 # -> dist/apercu/*.png
+#     ./demarrer.sh --apercu              # -> dist/apercu/*.png
 #
 # Le serveur doit tourner : les ecrans sont remplis de vraies reponses.
 set -euo pipefail
@@ -85,9 +85,12 @@ touche Down Down;                  prise 14-liste-selection 0.8
 touche 5;                          prise 15-photo-depuis-liste 6
 touche Escape;                     prise 16-retour-liste 3
 touche Right;                      prise 17-colonne-retrait 0.8
-touche F3;                         prise 18-reglages 2
+touche F4;                         prise 18-courses-vide 2        # liste de courses
+frappe '3017620422003';            prise 19-courses-inscrit 4      # un bip l'inscrit
+touche Return;                     prise 20-courses-coche 2.5      # au panier, barre
+touche F3;                         prise 21-reglages 2
 touche F2;                         sleep 1
-frappe '0000000000017';            prise 19-inconnu 4.5
+frappe '0000000000017';            prise 22-inconnu 4.5
 
 echo
 if [ -s inventaire-erreur.txt ]; then

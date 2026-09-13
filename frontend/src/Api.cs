@@ -114,10 +114,49 @@ namespace Inventaire
             return Texte("/api/inventaire", "tri=" + Encoder(tri), false);
         }
 
+        // ------------------------------------------------------- courses
+
+        public Reponse Courses()
+        {
+            return Texte("/api/courses", "", false);
+        }
+
+        /// <summary>Un code-barres, ou un libelle tape au clavier.</summary>
+        public Reponse CoursesAjouter(string code, string libelle, int qte)
+        {
+            string parametres = "qte=" + qte + "&origine=terminal";
+            if (code != null && code.Length > 0)
+                parametres += "&code=" + Encoder(code);
+            if (libelle != null && libelle.Length > 0)
+                parametres += "&libelle=" + Encoder(libelle);
+            return Texte("/api/courses/ajouter", parametres, true);
+        }
+
+        public Reponse CoursesCocher(int id, bool pris)
+        {
+            return Texte("/api/courses/cocher", "id=" + id + "&pris=" + (pris ? "1" : "0"),
+                         true);
+        }
+
+        public Reponse CoursesRetirer(int id)
+        {
+            return Texte("/api/courses/retirer", "id=" + id, true);
+        }
+
+        /// <summary>Efface ce qui est au panier. tout = toute la liste.</summary>
+        public Reponse CoursesVider(bool tout)
+        {
+            return Texte("/api/courses/vider", tout ? "tout=1" : "", true);
+        }
+
         public Reponse Image(string code, int taille)
         {
+            // bmp8 : palettise, le tiers des octets du 24 bits. Photo.cs sait
+            // lire les deux, et le serveur retombe sur 24 bits s'il ne connait
+            // pas ce format -- un binaire recent devant un vieux serveur
+            // affiche donc toujours quelque chose.
             return Binaire("/api/image?code=" + Encoder(code) + "&l=" + taille
-                           + "&h=" + taille + "&img=bmp");
+                           + "&h=" + taille + "&img=bmp8");
         }
 
         // --------------------------------------------------------- transport

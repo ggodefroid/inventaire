@@ -29,7 +29,7 @@ from pathlib import Path
 
 from . import VERSION, codebarres, off, web
 from .db import JOUR, MOIS, Base, aujourdhui, fin_de_mois, jours_restants
-from .images import PILLOW_DISPONIBLE, Vignettes
+from .images import FORMAT_PAR_DEFAUT, PILLOW_DISPONIBLE, Vignettes
 from .rendu import rendre
 
 log = logging.getLogger("inventaire.api")
@@ -69,6 +69,11 @@ class Application:
             "/api/nommer": self.nommer,
             "/api/inventaire": self.inventaire,
             "/api/bientot": self.bientot,
+            "/api/courses": self.courses,
+            "/api/courses/ajouter": self.courses_ajouter,
+            "/api/courses/cocher": self.courses_cocher,
+            "/api/courses/retirer": self.courses_retirer,
+            "/api/courses/vider": self.courses_vider,
         }
 
     # ------------------------------------------------------------- outillage
@@ -99,11 +104,19 @@ class Application:
         return self._codes(p)[1]
 
     def _resoudre(self, lu: str, forcer: bool = False) -> tuple[dict, str]:
-        """Fiche et code canonique, en retenant la correspondance trouvee."""
+        """Fiche et code canonique, en retenant la correspondance trouvee.
+
+        C'est aussi le moment ou la photo part en prechauffage. Le terminal
+        vient de bipper ; il lui reste a lire le nom, le Nutri-Score et les
+        lots avant de demander l'image. Ces quelques secondes suffisent a la
+        telecharger et a la convertir en tache de fond, et l'affichage devient
+        immediat au lieu d'attendre Open Food Facts.
+        """
         fiche, code = off.resoudre(self.base, lu, en_ligne=self.en_ligne,
                                    forcer=forcer, delai=self.delai_off,
                                    agent=self.agent)
         self.base.poser_alias(lu, code)
+        self.vignettes.prechauffer(code, fiche.get("image_url") or "")
         return fiche, code
 
     @staticmethod
@@ -361,6 +374,88 @@ class Application:
         lignes = self.base.bientot(jours)
         return self._enveloppe({"jours": jours, "lignes": lignes})
 
+    # ------------------------------------------------------------- courses
+
+    def courses(self, p: dict) -> dict:
+        """La liste de courses. `restant=1` masque ce qui est deja au panier."""
+        lignes = self.base.courses(inclure_pris=p.get("restant") != "1")
+        return self._enveloppe({
+            "compteurs": self.base.compteurs_courses(),
+            "articles": lignes,
+        })
+
+    def courses_ajouter(self, p: dict) -> dict:
+        """Un code-barres, ou un libelle tape au clavier.
+
+        Le terminal envoie un code : c'est ce qu'il sait faire de mieux. La
+        fiche produit n'a pas besoin d'exister -- on inscrit le code, et le
+        nom apparaitra tout seul le jour ou Open Food Facts repondra.
+        """
+        libelle = (p.get("libelle") or p.get("nom") or "").strip()[:80]
+        qte = self._entier(p, "qte", 1, 1, 99)
+        note = (p.get("note") or "").strip()[:120] or None
+        origine = (p.get("origine") or "terminal").strip()[:16]
+
+        code = ""
+        if (p.get("code") or "").strip():
+            lu, code = self._codes(p)
+            if not libelle:
+                # Interroger Open Food Facts si le produit est inconnu : on met
+                # un nom sur la ligne plutot qu'un code-barres nu.
+                fiche = self.base.produit(code)
+                if fiche is None and self.en_ligne:
+                    try:
+                        fiche, code = self._resoudre(lu)
+                    except Exception:                # pas de reseau : tant pis
+                        fiche = None
+        try:
+            article = self.base.ajouter_aux_courses(
+                code=code or None, libelle=libelle, qte=qte,
+                origine=origine, note=note)
+        except ValueError as exc:
+            raise Erreur(str(exc)) from None
+        return self._enveloppe({
+            "article": article,
+            "compteurs": self.base.compteurs_courses(),
+            "message": f"+{qte} {article['libelle']} sur la liste",
+        })
+
+    def courses_cocher(self, p: dict) -> dict:
+        identifiant = self._entier(p, "id", 0, 1, 10 ** 9)
+        pris = (p.get("pris") or "1") != "0"
+        article = self.base.cocher_course(identifiant, pris)
+        if article is None:
+            raise Erreur("article absent de la liste")
+        return self._enveloppe({
+            "article": article,
+            "compteurs": self.base.compteurs_courses(),
+            "message": ("au panier : " if pris else "a reprendre : ") + article["libelle"],
+        })
+
+    def courses_retirer(self, p: dict) -> dict:
+        identifiant = self._entier(p, "id", 0, 1, 10 ** 9)
+        avant = self.base.course(identifiant)
+        if avant is None:
+            raise Erreur("article absent de la liste")
+        qte = self._entier(p, "qte", 0, 0, 99) or None
+        reste = self.base.retirer_course(identifiant, qte)
+        return self._enveloppe({
+            "article": reste or {},
+            "reste": bool(reste),
+            "compteurs": self.base.compteurs_courses(),
+            "message": f"-{qte or avant['qte']} {avant['libelle']}",
+        })
+
+    def courses_vider(self, p: dict) -> dict:
+        """Vide le panier. `tout=1` efface aussi ce qui reste a prendre."""
+        tout = p.get("tout") == "1"
+        efface = self.base.vider_courses(seulement_pris=not tout)
+        return self._enveloppe({
+            "efface": efface,
+            "compteurs": self.base.compteurs_courses(),
+            "message": f"{efface} ligne(s) effacee(s)",
+        })
+
     # ----------------------------------------------------------- livraison
 
     def livrable(self, nom: str) -> tuple[bytes, str] | None:
@@ -403,7 +498,7 @@ class Application:
             code, url,
             self._entier(p, "l", LARGEUR_VIGNETTE, 16, 480),
             self._entier(p, "h", HAUTEUR_VIGNETTE, 16, 480),
-            (p.get("fmt_image") or p.get("img") or "bmp").lower())
+            (p.get("fmt_image") or p.get("img") or FORMAT_PAR_DEFAUT).lower())
 
 
 class Gestionnaire(http.server.BaseHTTPRequestHandler):

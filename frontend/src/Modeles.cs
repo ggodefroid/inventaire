@@ -222,4 +222,40 @@ namespace Inventaire
             Jours = jours;
         }
     }
+
+    /// <summary>Une ligne de la liste de courses.</summary>
+    internal sealed class Course
+    {
+        public int Id;
+        public string Code = "";
+        public string Libelle = "";
+        public string Detail = "";
+        public int Qte;
+        public bool Pris;
+        public bool Image;
+
+        public static Course[] Depuis(Kv kv)
+        {
+            int nb = kv.Compte("articles");
+            Course[] articles = new Course[nb];
+            for (int i = 0; i < nb; i++)
+            {
+                string p = "article." + i + ".";
+                Course c = new Course();
+                c.Id = kv.I(p + "id", 0);
+                c.Code = kv.S(p + "code");
+                c.Libelle = kv.S(p + "libelle");
+                c.Qte = kv.I(p + "qte", 1);
+                c.Pris = kv.B(p + "pris");
+                c.Image = kv.B(p + "image");
+                string marque = kv.S(p + "marque");
+                string contenance = kv.S(p + "contenance");
+                c.Detail = marque.Length > 0 && contenance.Length > 0
+                    ? marque + " · " + contenance
+                    : (marque.Length > 0 ? marque : contenance);
+                articles[i] = c;
+            }
+            return articles;
+        }
+    }
 }

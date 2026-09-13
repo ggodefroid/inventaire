@@ -21,7 +21,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from inventaire import VERSION, off                                    # noqa: E402
 from inventaire.api import Application, faire_serveur                  # noqa: E402
 from inventaire.db import BASE_PAR_DEFAUT, Base                        # noqa: E402
-from inventaire.images import PILLOW_DISPONIBLE, Vignettes             # noqa: E402
+from inventaire.images import (DELAI_PHOTO, PILLOW_DISPONIBLE,          # noqa: E402
+                               Vignettes)
 
 CACHE_PAR_DEFAUT = Path(__file__).resolve().parent / "donnees" / "cache"
 DIST_PAR_DEFAUT = Path(__file__).resolve().parent.parent / "dist"
@@ -65,7 +66,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--agent", default=off.AGENT,
                     help="User-Agent envoye a Open Food Facts")
     ap.add_argument("--delai-off", type=float, default=8.0,
-                    help="delai d'attente sur Open Food Facts, en secondes")
+                    help="delai d'attente sur les fiches Open Food Facts, en secondes")
+    ap.add_argument("--delai-photo", type=float, default=DELAI_PHOTO,
+                    help="delai d'attente sur les photos (telechargees en tache de fond)")
     ap.add_argument("-v", "--verbeux", action="count", default=0,
                     help="-v : requetes ; -vv : tout")
     args = ap.parse_args(argv)
@@ -76,7 +79,7 @@ def main(argv: list[str] | None = None) -> int:
         datefmt="%H:%M:%S")
 
     base = Base(args.db)
-    vignettes = Vignettes(args.cache, agent=args.agent, delai=args.delai_off)
+    vignettes = Vignettes(args.cache, agent=args.agent, delai=args.delai_photo)
     application = Application(base, vignettes, en_ligne=not args.hors_ligne,
                               agent=args.agent, delai_off=args.delai_off,
                               dist=args.dist)
@@ -104,6 +107,7 @@ def main(argv: list[str] | None = None) -> int:
         print("\narret.")
     finally:
         serveur.server_close()
+        vignettes.arreter()
         base.fermer()
     return 0
 
