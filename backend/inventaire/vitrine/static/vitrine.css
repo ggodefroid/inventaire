@@ -22,8 +22,8 @@
   --trait-fort:rgba(47,240,200,.34);
   --texte:#d6e6ea;
   --vif:#eafffa;
-  --doux:#6d8794;
-  --tres-doux:#3f5560;
+  --doux:#8ba4b0;
+  --tres-doux:#6c828d;
   --halo-1:rgba(47,240,200,.10);
   --halo-2:rgba(139,124,255,.12);
   --grain:rgba(47,240,200,.045);
@@ -73,14 +73,14 @@
     --trait-fort:rgba(15,42,58,.34);
     --texte:#16242c;
     --vif:#05161c;
-    --doux:#5b727e;
-    --tres-doux:#8aa0aa;
-    --cyan:#0a8f77;
-    --magenta:#b8388f;
-    --ambre:#a96a08;
-    --violet:#5b4bd6;
-    --bleu:#1573bd;
-    --vert:#1c8f52;
+    --doux:#465c67;
+    --tres-doux:#5d737d;
+    --cyan:#00765e;
+    --magenta:#a82f82;
+    --ambre:#965c00;
+    --violet:#5343ce;
+    --bleu:#1069ad;
+    --vert:#0d8043;
     --halo-1:rgba(10,143,119,.10);
     --halo-2:rgba(91,75,214,.10);
     --grain:rgba(15,42,58,.05);
@@ -92,6 +92,7 @@
     --champ:rgba(15,42,58,.045);
     --champ-actif:rgba(10,143,119,.08);
     --ombre:0 16px 40px rgba(15,42,58,.14);
+  --rouge:#cb1827;
   --relief:15,42,58;
   }
 }
@@ -105,14 +106,14 @@
   --trait-fort:rgba(15,42,58,.34);
   --texte:#16242c;
   --vif:#05161c;
-  --doux:#5b727e;
-  --tres-doux:#8aa0aa;
-  --cyan:#0a8f77;
-  --magenta:#b8388f;
-  --ambre:#a96a08;
-  --violet:#5b4bd6;
-  --bleu:#1573bd;
-  --vert:#1c8f52;
+  --doux:#465c67;
+  --tres-doux:#5d737d;
+  --cyan:#00765e;
+  --magenta:#a82f82;
+  --ambre:#965c00;
+  --violet:#5343ce;
+  --bleu:#1069ad;
+  --vert:#0d8043;
   --halo-1:rgba(10,143,119,.10);
   --halo-2:rgba(91,75,214,.10);
   --grain:rgba(15,42,58,.05);
@@ -124,6 +125,7 @@
   --champ:rgba(15,42,58,.045);
   --champ-actif:rgba(10,143,119,.08);
   --ombre:0 16px 40px rgba(15,42,58,.14);
+  --rouge:#cb1827;
   --relief:15,42,58;
 }
 
@@ -228,7 +230,8 @@ body{
 .onglet.actif::after{content:"";position:absolute;left:12px;right:12px;bottom:0;height:2px;
   background:var(--cyan);box-shadow:0 0 12px var(--cyan)}
 .pastille{display:none;min-width:16px;height:16px;padding:0 4px;border-radius:99px;
-  background:var(--rouge);color:#fff;font:700 11px/18.5px var(--mono);text-align:center;font-style:normal}
+  background:var(--rouge);color:var(--fond);font:700 11px/18.5px var(--mono);
+  text-align:center;font-style:normal}
 .pastille.on{display:inline-block}
 
 /* --- structure --------------------------------------------------------- */
@@ -298,7 +301,7 @@ main{position:relative;z-index:2;max-width:1500px;margin:0 auto;padding:22px 16p
   background:var(--doux);padding:3px 5px;border-radius:3px}
 .kpi.bon .kpi-rang{background:var(--vert)}
 .kpi.moyen .kpi-rang{background:var(--ambre)}
-.kpi.mauvais .kpi-rang{background:var(--rouge);color:#fff}
+.kpi.mauvais .kpi-rang{background:var(--rouge)}
 .kpi-code{font:600 11px/1 var(--mono);letter-spacing:.2em;color:var(--doux)}
 .kpi-titre{font:500 14px/1.3 var(--sans);color:var(--texte)}
 .kpi-val{display:flex;align-items:baseline;gap:5px;font-variant-numeric:tabular-nums}
@@ -631,7 +634,10 @@ mark{background:rgba(47,240,200,.22);color:var(--vif);border-radius:2px;padding:
 
 .course-photo{flex:none;width:34px;height:34px;border-radius:7px;object-fit:cover;
   background:var(--panneau-plein);border:1px solid var(--trait)}
-.course-photo.vide{display:block}
+/* `creuse`, et non `vide` : cette derniere est deja la classe des listes
+   sans contenu, avec ses 50 px de rembourrage -- le cadre photo en
+   heritait et montait a 102 px de haut. */
+.course-photo.creuse{display:block}
 
 .course-texte{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .course-texte b{font:600 15px/1.25 var(--sans);color:var(--texte);

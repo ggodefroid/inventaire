@@ -15,6 +15,7 @@
 #   ./demarrer.sh --etat       etat des services et sondes de sante
 #   ./demarrer.sh --journaux   suit les journaux des services
 #   ./demarrer.sh --apercu     photographie les ecrans du client -> dist/apercu/
+#   ./demarrer.sh --veille     rend les 55 economiseurs -> dist/veille/
 #   ./demarrer.sh --nettoyer   arrete, supprime conteneurs et images
 #
 # Les donnees ne sont jamais touchees : elles vivent dans backend/donnees/,
@@ -37,6 +38,7 @@ for argument in "$@"; do
     --etat)     action="etat" ;;
     --journaux) action="journaux" ;;
     --apercu)   action="apercu" ;;
+    --veille)   action="veille" ;;
     --nettoyer) action="nettoyer" ;;
     -h|--help)  usage; exit 0 ;;
     *) rouge "argument inconnu : $argument"; usage; exit 2 ;;
@@ -86,7 +88,15 @@ case "$action" in
   etat)     exec "${compose[@]}" ps ;;
   journaux) exec "${compose[@]}" logs -f --tail 50 ;;
   apercu)
+    # `run` ne reconstruit pas : sans cette passe, une image tiree d'un essai
+    # precedent tournerait avec des sources perimees.
+    "${compose[@]}" --profile apercu build apercu
     exec "${compose[@]}" --profile apercu run --rm apercu ;;
+  veille)
+    "${compose[@]}" --profile apercu build apercu
+    # --no-deps : les economiseurs ne parlent a personne, aucun serveur requis.
+    exec "${compose[@]}" --profile apercu run --rm --no-deps \
+        --entrypoint /src/frontend/build/planche-veille.sh apercu ;;
   nettoyer)
     "${compose[@]}" --profile apercu down --remove-orphans || true
     for image in inventaire-frigo inventaire-client inventaire-apercu; do

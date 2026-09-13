@@ -37,6 +37,7 @@ import concurrent.futures
 import hashlib
 import io
 import logging
+import os
 import threading
 import urllib.error
 import urllib.request
@@ -73,10 +74,26 @@ OUVRIERS = 2                                        # fils de prechauffage
 # partager le delai de l'API revenait a jeter une photo sur deux.
 DELAI_PHOTO = 20.0
 
-# Les deux cadres que le terminal dessine : la vignette de la fiche article
-# (reglable de 48 a 96 pixels) et la photo plein ecran. Prechauffer les deux
-# couvre tout ce qu'un scan peut declencher ensuite.
-TAILLES_TERMINAL = (80, 200)
+# Les trois cadres que le terminal dessine : la vignette des listes, celle de
+# la fiche article (reglable de 48 a 96 px, 80 par defaut) et la photo plein
+# ecran. Prechauffer les trois couvre tout ce qu'un scan peut declencher
+# ensuite -- et comme la source n'est telechargee qu'une fois, les tailles
+# supplementaires ne coutent que quelques millisecondes de redimensionnement.
+TAILLES_TERMINAL = (26, 80, 200)
+
+
+def _provisoire(cible: Path) -> Path:
+    """Nom de fichier temporaire propre a l'ecrivain.
+
+    Un `.part` derive de la seule cible suffisait tant qu'un seul fil ecrivait.
+    Depuis le prechauffage, deux fils peuvent fabriquer la meme vignette dans la
+    meme seconde -- et trois processus partagent ce cache : le serveur, le site
+    et le serveur MCP. Deux `replace()` sur le meme provisoire, et le second
+    echoue sur un fichier que le premier vient de renommer. Le PID et
+    l'identifiant de fil rendent la collision impossible ; l'ecriture reste
+    atomique, et le dernier arrive gagne avec des octets identiques.
+    """
+    return cible.with_suffix(f"{cible.suffix}.{os.getpid()}-{threading.get_ident()}.part")
 
 
 class Memoire:
@@ -157,6 +174,8 @@ class Vignettes:
             if ouvriers > 0 else None)
         self._en_vol: set[str] = set()
         self._verrou_vol = threading.Lock()
+        self._urls: dict[str, threading.Lock] = {}
+        self._verrou_urls = threading.Lock()
 
     # ----------------------------------------------------------- prechauffage
 
@@ -200,10 +219,34 @@ class Vignettes:
     # ----------------------------------------------------------------- source
 
     def _original(self, url: str) -> bytes | None:
+        """L'image source, telechargee une seule fois quoi qu'il arrive.
+
+        Le verrou par URL n'est pas une precaution theorique. Depuis que la
+        photo part en prechauffage des le scan, deux fils la reclament dans la
+        meme seconde : celui du fond, et celui de la requete du terminal quand
+        l'ecran la demande. Sans verrou, chacun ouvrait sa connexion et
+        telechargeait le meme fichier -- trois fois pour les trois tailles --
+        ce qui ralentissait precisement ce que le prechauffage devait
+        accelerer. Le premier arrive telecharge, les autres attendent et
+        relisent le cache.
+        """
         empreinte = hashlib.sha1(url.encode("utf-8")).hexdigest()[:20]
         cache = self.sources / empreinte
         if cache.is_file():
             return cache.read_bytes()
+
+        with self._verrou_urls:
+            verrou = self._urls.setdefault(empreinte, threading.Lock())
+        with verrou:
+            # Un autre fil a pu terminer pendant qu'on attendait.
+            if cache.is_file():
+                return cache.read_bytes()
+            donnees = self._telecharger(url, cache)
+        with self._verrou_urls:
+            self._urls.pop(empreinte, None)
+        return donnees
+
+    def _telecharger(self, url: str, cache: Path) -> bytes | None:
         requete = urllib.request.Request(url, headers={
             "User-Agent": self.agent, "Accept": "image/*",
         })
@@ -217,7 +260,7 @@ class Vignettes:
             return None
         # Ecriture atomique : un cache tronque par une coupure serait pire
         # qu'un cache vide, car il ne serait jamais retelecharge.
-        provisoire = cache.with_suffix(".part")
+        provisoire = _provisoire(cache)
         provisoire.write_bytes(donnees)
         provisoire.replace(cache)
         return donnees
@@ -276,7 +319,7 @@ class Vignettes:
         else:
             vignette.save(tampon, "BMP")             # 24 bits, non compresse
         rendu = tampon.getvalue()
-        provisoire = cible.with_suffix(cible.suffix + ".part")
+        provisoire = _provisoire(cible)
         provisoire.write_bytes(rendu)
         provisoire.replace(cible)
         self.memoire.ecrire(cle, rendu, mime)
@@ -313,4 +356,16 @@ class Vignettes:
                 if fichier.is_file():
                     fichier.unlink()
                     n += 1
+        return n
+
+    def balayer_provisoires(self) -> int:
+        """Supprime les fichiers .part laisses par un arret brutal."""
+        n = 0
+        for dossier in (self.sources, self.vignettes):
+            for fichier in dossier.glob("*.part"):
+                try:
+                    fichier.unlink()
+                    n += 1
+                except OSError:                      # pragma: no cover
+                    pass
         return n

@@ -62,7 +62,7 @@ const dessuite = etat => () => {           // generateur pseudo aleatoire xorshi
 
 const COULEURS = {
   a: '#1a9e5c', b: '#7ac943', c: '#ffd23f', d: '#ff9b3d', e: '#ff4d5e',
-  '?': '#3f5560',
+  '?': 'var(--tres-doux)',
   1: '#3fe08a', 2: '#7ac943', 3: '#ffb347', 4: '#ff4d5e',
 };
 const PALETTE = ['#2ff0c8', '#8b7cff', '#ff7ad9', '#ffb347', '#49b8ff',
@@ -73,7 +73,7 @@ const URGENCES = {
   tendu:    {c: '#ffb347', l: 'sous 7 j'},
   correct:  {c: '#49b8ff', l: 'sous 20 j'},
   large:    {c: '#3fe08a', l: 'au-delà'},
-  inconnu:  {c: '#3f5560', l: 'sans date'},
+  inconnu:  {c: 'var(--tres-doux)', l: 'sans date'},
 };
 
 const couleurUrgence = j => URGENCES[classeJours(j)].c;
@@ -463,7 +463,7 @@ function rendreDonuts(e) {
     {titre: 'Échéances', sous: 'unités', legende: 'répartition', donnees: d.urgence,
      couleurs: {'périmé': '#ff4d5e', 'sous 72 h': '#ff4d5e', 'sous 7 j': '#ffb347',
                 'sous 15 j': '#49b8ff', 'sous 30 j': '#8b7cff', 'au-delà': '#3fe08a',
-                'sans date': '#3f5560'},
+                'sans date': 'var(--tres-doux)'},
      centre: () => nb(total(d.urgence))},
     {titre: 'Apport énergétique', sous: 'kcal', legende: 'par macronutriment', donnees: d.macros,
      couleurs: {proteines: '#49b8ff', glucides: '#ffb347', lipides: '#ff7ad9'},
@@ -538,7 +538,7 @@ function rendreNiveaux(e) {
       <span class="crans">${rangs.map((r, i) => `<i class="cran ${i < plein ? 'on ' + rangs[plein - 1] : ''}"></i>`).join('')}</span>
       <span>${d.moyenne ? fr1.format(d.moyenne) : '-'}</span>
     </div>`;
-  }).join('') + `<p class="note" style="margin:10px 0 0;font:400 10.5px/1.5 ui-monospace,monospace;color:#3f5560">
+  }).join('') + `<p class="note" style="margin:10px 0 0;font:400 11.5px/1.5 var(--mono);color:var(--tres-doux)">
     moyenne des trois crans d'Open Food Facts, pondérée par les unités en stock</p>`;
 }
 
@@ -923,7 +923,7 @@ function rendreCourses(e) {
 function ligneCourse(a) {
   const vignette = a.photo
     ? `<img class="course-photo" src="/photo/${encodeURIComponent(a.code)}?t=64" alt="" loading="lazy">`
-    : '<span class="course-photo vide" aria-hidden="true"></span>';
+    : '<span class="course-photo creuse" aria-hidden="true"></span>';
   const detail = [a.marque, a.contenance].filter(Boolean).join(' · ');
   return `<li class="course ${a.pris ? 'prise' : ''}" data-course="${a.id}">
     <button class="coche" data-action="cocher" data-pris="${a.pris ? '0' : '1'}"

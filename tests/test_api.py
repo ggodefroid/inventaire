@@ -7,7 +7,11 @@ import unittest
 import urllib.parse
 import urllib.request
 
-from tests.commun import fermer_tout, FICHE_NUTELLA, application_de_test  # noqa: F401
+import tempfile
+from pathlib import Path
+
+from tests.commun import (fermer_tout, FICHE_NUTELLA,  # noqa: F401
+                          RACINE, application_de_test)
 
 from inventaire.api import Erreur, faire_serveur
 
@@ -365,6 +369,101 @@ class TestCacheVignettes(unittest.TestCase):
         self.app.image({"code": "3017620422003", "l": "28", "h": "28"})
         self.app.image({"code": "3017620422003", "l": "80", "h": "80"})
         self.assertEqual(memoire.compteurs()["vignettes"], 2)
+
+    def test_une_seule_source_telechargee_malgre_le_prechauffage(self):
+        """La regression a ne pas refaire.
+
+        Le prechauffage lance le telechargement des le scan ; l'ecran reclame
+        la meme photo une fraction de seconde plus tard. Sans verrou par URL,
+        chacun ouvrait sa connexion et le meme fichier descendait plusieurs
+        fois -- ce qui ralentissait exactement ce que le prechauffage devait
+        accelerer.
+        """
+        import threading
+        import time
+        from inventaire.images import Vignettes
+
+        dossier = Path(tempfile.mkdtemp(prefix="frigo-prechauffe-"))
+        vignettes = Vignettes(dossier, agent="test/1.0", ouvriers=2)
+        self.addCleanup(vignettes.arreter)
+
+        appels = []
+        verrou = threading.Lock()
+
+        def telecharger_lentement(url, cache):
+            with verrou:
+                appels.append(url)
+            time.sleep(0.25)                 # le temps qu'un autre fil demande
+            cache.write_bytes(self.octets)
+            return self.octets
+
+        vignettes._telecharger = telecharger_lentement
+
+        vignettes.prechauffer("3017620422003", "http://exemple/p.jpg")
+        # L'ecran demande pendant que le prechauffage est encore en vol.
+        corps, _ = vignettes.obtenir("3017620422003", "http://exemple/p.jpg",
+                                     80, 80, "bmp8")
+        for _ in range(40):
+            if not vignettes._en_vol:
+                break
+            time.sleep(0.05)
+
+        self.assertTrue(corps)
+        self.assertEqual(len(appels), 1,
+                         f"{len(appels)} telechargements de la meme photo")
+
+    def test_deux_fils_fabriquent_la_meme_vignette_sans_se_marcher_dessus(self):
+        """Le fichier provisoire doit etre propre a chaque ecrivain.
+
+        Derive de la seule cible, il etait partage : deux fils ecrivaient le
+        meme `.part`, le premier le renommait, et le `replace` du second
+        echouait sur un fichier disparu. Trois processus partagent ce cache en
+        production -- le serveur, le site et le serveur MCP.
+        """
+        import threading
+        from inventaire.images import Vignettes
+
+        dossier = Path(tempfile.mkdtemp(prefix="frigo-course-"))
+        vignettes = Vignettes(dossier, agent="test/1.0", ouvriers=0)
+        vignettes._telecharger = lambda url, cache: (cache.write_bytes(self.octets)
+                                                     or self.octets)
+
+        soucis = []
+        barriere = threading.Barrier(6)
+
+        def fabriquer():
+            barriere.wait()
+            for _ in range(8):
+                try:
+                    vignettes.memoire.vider()        # force le passage par le disque
+                    vignettes.obtenir("3017620422003", "http://exemple/p.jpg",
+                                      80, 80, "bmp8")
+                except Exception as exc:
+                    soucis.append(repr(exc))
+
+        fils = [threading.Thread(target=fabriquer) for _ in range(6)]
+        for f in fils:
+            f.start()
+        for f in fils:
+            f.join(20)
+        self.assertEqual(soucis, [])
+
+    def test_le_prechauffage_couvre_les_tailles_que_le_client_demande(self):
+        """Prechauffer une taille que personne ne reclame ne sert a rien."""
+        import re
+        from inventaire.images import TAILLES_TERMINAL
+
+        sources = RACINE / "frontend" / "src"
+        demandees = set()
+        for fichier in sources.glob("Ecran*.cs"):
+            for m in re.finditer(r"(?:const int (?:Taille|TailleVignette)) = (\d+)",
+                                 fichier.read_text(encoding="utf-8")):
+                demandees.add(int(m.group(1)))
+        self.assertTrue(demandees, "aucune taille trouvee dans les sources C#")
+        manquantes = demandees - set(TAILLES_TERMINAL)
+        self.assertFalse(manquantes,
+                         f"tailles demandees par le terminal mais jamais "
+                         f"prechauffees : {sorted(manquantes)}")
 
     def test_eviction_du_plus_ancien(self):
         from inventaire.images import Memoire

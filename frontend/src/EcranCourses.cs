@@ -35,7 +35,8 @@ namespace Inventaire
         private const int HauteurLigne = 32;
         private const int HauteurBarre = 30;
         private const int LargeurBouton = 30;
-        public const int TailleVignette = 24;
+        /// <summary>Meme taille que la liste du frigo : une seule entree en cache.</summary>
+        public const int TailleVignette = 26;
 
         public EcranCourses(Fenetre fenetre) : base(fenetre) { }
 

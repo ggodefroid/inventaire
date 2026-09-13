@@ -235,11 +235,11 @@ première mise en route : **[docs/01-terminal-skorpio.md](docs/01-terminal-skorp
   vide, et l'article est enregistré à cette précision-là. On n'invente pas un
   jour que le produit n'a pas.
 - **Il se met en veille.** Après une minute sans rien toucher — ou sur `Échap`
-  depuis l'accueil — l'écran passe à un économiseur rétro : pluie de pixels,
-  champ d'étoiles, logo rebondissant, lignes qui rebondissent, tuyaux, relayés
-  toutes les trente secondes, puis le noir. Une touche réveille **et** agit, pour
-  qu'une pression sur la gâchette scanne sans avoir à tirer deux fois ; un
-  appui sur l'écran réveille seulement.
+  depuis l'accueil — l'écran passe à un économiseur, relayé toutes les trente
+  secondes, puis au noir. Une touche réveille **et** agit, pour qu'une pression
+  sur la gâchette scanne sans avoir à tirer deux fois ; un appui sur l'écran
+  réveille seulement. Il y en a **cinquante-cinq** : voir
+  [Les économiseurs](#les-économiseurs).
 - **Il se met à jour tout seul.** Au démarrage, s'il joint le serveur et que
   `dist/` y contient un binaire différent du sien, il le propose, le télécharge
   et se remplace — l'ancien est conservé sous `.old`, et à aucun moment le
@@ -326,6 +326,50 @@ courses** que le terminal et le site alimentent tous les deux. Détail complet :
   l'historique du niveau.
 - **Responsive**, du téléphone à l'écran large, et pilotable au clavier :
   `1` à `5` pour les vues, `/` pour chercher, `Échap` pour sortir.
+
+## Les économiseurs
+
+Un terminal posé sur un plan de travail mérite mieux qu'une image figée — et un
+écran fixe use les afficheurs. Il y a donc **cinquante-cinq** économiseurs,
+tirés sans remise et relayés toutes les trente secondes. Leur nom s'affiche deux
+secondes en bas de l'écran, faute de quoi la moitié des références passeraient
+inaperçues.
+
+| | |
+|---|---|
+| **Démoscène** | plasma, feu de Doom, tunnel, rotozoom, metaballs, Lissajous, spirographe, attracteur de Lorenz, Sierpinski, Mandelbrot, Julia, barres copper, sinus scroller, moiré, boids, jeu de la vie, règle 30, sable, ondes, lampe à lave |
+| **Bornes d'arcade** | Pong, casse-briques, Snake, Tetris, Space Invaders, le glouton de 1980, Astéroïdes, Simon, démineur, labyrinthe 3D |
+| **Écrans de machine** | écran bleu, invite MS-DOS, défragmenteur, ScanDisk, installation, journal de démarrage, vidage hexadécimal, test mémoire, fenêtres volantes, oscilloscope, vumètre, égaliseur, mire, neige, horloge à aiguilles, horloge à volets, horloge binaire, tubes Nixie, code-barres, télex |
+| **Les cinq d'origine** | pluie de pixels, champ d'étoiles, logo rebondissant, Mystify, tuyaux |
+
+Deux contraintes gouvernent tout ce code, et ce sont elles qui lui donnent sa
+forme :
+
+**Aucun nombre à virgule.** Le PXA270 n'a pas d'unité de calcul flottant :
+chaque `double` est émulé par la bibliothèque, à des centaines de cycles
+l'opération. Un sinus par pixel donnerait une image par seconde. Tout passe donc
+par une table de sinus entière — 256 pas, amplitude 1024 — exactement ce qu'on
+faisait sur Amiga, et pour la même raison.
+
+**Aucun pixel individuel.** `SetPixel` verrouille l'image à chaque appel, et
+76 800 appels par image sont hors de portée. Les effets qui couvrent l'écran
+travaillent en blocs de quatre à huit pixels, peints en rectangles pleins. C'est
+aussi ce qui leur donne leur grain d'époque.
+
+Le moteur ne sait rien d'aucun effet : il tient une table, tire dedans, appelle
+`Avancer` puis `Peindre`. Ajouter un économiseur, c'est ajouter une classe et
+une ligne. Un effet qui lèverait une exception est remplacé par le suivant sans
+que l'application s'en aperçoive.
+
+```bash
+./demarrer.sh --veille      # rend les 55 hors terminal -> dist/veille/*.png
+```
+
+Ce banc compile les mêmes sources contre le Mono de bureau, anime chaque
+économiseur quatre-vingt-dix images et en sauve une planche. Il échoue si l'un
+d'eux lève une exception ou rend un écran noir — deux pannes qu'on ne verrait
+autrement qu'en attendant trente secondes devant l'appareil, cinquante-cinq
+fois de suite.
 
 ## La liste de courses
 
@@ -509,7 +553,12 @@ frontend/
     Ecran*.cs                 les sept écrans
     Sons.cs                   synthèse des effets sonores en mémoire
     CachePhotos.cs            photos gardées en RAM, chargées dans les creux
-    Veille.cs                 les cinq économiseurs d'écran
+    Effet.cs                  socle des économiseurs : sinus entiers, blocs
+    Veille.cs                 le moteur : une table de 55, tirée sans remise
+    VeilleClassiques.cs       pluie, étoiles, logo, Mystify, tuyaux
+    VeilleDemos.cs            20 effets de démoscène
+    VeilleJeux.cs             10 bornes d'arcade en mode attraction
+    VeilleMachine.cs          20 écrans de machine
     EcranMaj.cs               mise à jour du binaire depuis le serveur
     Theme.cs                  couleurs, polices, primitives de dessin
     Api.cs · Kv.cs            HTTP et lecture du format clé=valeur
