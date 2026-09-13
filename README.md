@@ -313,8 +313,10 @@ la lecture, elle annonce que la rafale se termine ; le relevé a lieu 170 ms plu
 
 **5. 🔊 Les sons sont synthétisés, pas joués depuis des fichiers.** `MessageBeep` ne donne
 que cinq sons figés, souvent un seul sur un terminal industriel. `PlaySound` de `coredll`
-accepte en revanche un WAV **en mémoire** : le programme fabrique donc ses **douze ondes**
-lui-même, en 8 bits à 11 kHz, et n'a rien à déposer sur le terminal.
+accepte en revanche un WAV **en mémoire** : le programme fabrique donc ses **quatorze ondes**
+lui-même, en 8 bits à 11 kHz, et n'a rien à déposer sur le terminal. La quatorzième est une
+**voix** — aucune image de Windows CE n'embarque de synthèse vocale, alors un synthétiseur à
+formants de cent lignes prononce « Inventaire » au démarrage. 🗣️
 
 **6. 🔑 Une clé de contrôle absente est reconstituée.** Douze chiffres qui ne forment pas un
 UPC-A valide sont forcément un EAN-13 amputé. Quand le calcul ne tranche pas, les deux
@@ -394,8 +396,9 @@ précision-là. **On n'invente pas un jour que le produit n'a pas.**
 **🔄 Il se met à jour tout seul.** Au démarrage, si `dist/` contient un binaire différent du
 sien, il le propose, le télécharge et se remplace. L'ancien est gardé en `.old`. 🛡️
 
-**🔊 Ça fait du bruit.** Douze effets synthétisés : fanfare, bip, arpèges montants à l'ajout,
-descendants au retrait, alerte devant un produit périmé.
+**🔊 Ça fait du bruit.** Quatorze effets synthétisés : fanfare, bip, arpèges montants à
+l'ajout, descendants au retrait, alerte devant un produit périmé, carillon à la mise en
+charge — et une voix qui dit son nom au démarrage.
 
 **📉 Les retraits suivent le FEFO** — sort toujours ce qui périme le plus tôt.
 

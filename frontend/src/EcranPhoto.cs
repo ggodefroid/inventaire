@@ -37,7 +37,7 @@ namespace Inventaire
             if (_demande != null && _demande.Retour != null)
                 Fenetre.Aller(_demande.Retour, _demande.Argument);
             else
-                Fenetre.Aller(Fenetre.Scan, null);
+                Fenetre.Aller(Fenetre.Racine, null);
         }
 
         public override bool Touche(Keys touche)

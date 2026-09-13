@@ -25,6 +25,8 @@ namespace Inventaire
         // caractere, sinon taper un code a la main serait impossible.
         protected override bool RaccourcisActifs { get { return false; } }
 
+        public override bool EstRacine { get { return true; } }
+
         public override void Entrer(object argument)
         {
             EffacerFrappe();

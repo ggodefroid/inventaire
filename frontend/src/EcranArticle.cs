@@ -47,10 +47,9 @@ namespace Inventaire
                 Sons.Jouer(Sons.Alerte);
         }
 
-        public override void Retour()
-        {
-            Fenetre.Aller(Fenetre.Scan, null);
-        }
+        // Pas de Retour() ici : la fiche est un sous-ecran, et la base la
+        // ramene a la racine d'ou l'on vient -- l'accueil apres un bip, la
+        // liste quand on parcourt le frigo.
 
         /// <summary>true si au moins un lot a depasse sa date.</summary>
         private bool Perime()

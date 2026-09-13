@@ -76,9 +76,28 @@ namespace Inventaire
 
         public virtual void Sortir() { }
 
+        /// <summary>
+        /// true pour les quatre ecrans ou l'on se pose : l'accueil, le frigo,
+        /// les courses et les reglages. Ce sont les destinations des touches
+        /// de fonction, et les seules dont on ne « revient » pas -- on y va.
+        /// </summary>
+        public virtual bool EstRacine { get { return false; } }
+
+        /// <summary>
+        /// La fleche du bandeau, et Echap.
+        ///
+        /// Un sous-ecran rend la racine d'ou l'on vient : la fiche d'un
+        /// article ouverte depuis « Tout le frigo » rend la liste, la meme
+        /// fiche ouverte apres un bip rend l'accueil. Sans cela, consulter un
+        /// article en parcourant le frigo ferait perdre sa place dans la
+        /// liste a chaque coup d'oeil.
+        ///
+        /// Une racine, elle, remonte a l'accueil : c'est le seul cran
+        /// au-dessus d'elle.
+        /// </summary>
         public virtual void Retour()
         {
-            Fenetre.Aller(Fenetre.Scan, null);
+            Fenetre.Aller(EstRacine ? Fenetre.Scan : Fenetre.Racine, null);
         }
 
         // ----------------------------------------------------------- clavier

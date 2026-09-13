@@ -39,6 +39,7 @@ namespace Inventaire
 
         // Les caracteres vont dans le champ selectionne, tels quels.
         public override bool LectureActive { get { return false; } }
+        public override bool EstRacine { get { return true; } }
 
         public override void Entrer(object argument)
         {

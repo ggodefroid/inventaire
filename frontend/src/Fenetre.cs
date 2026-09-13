@@ -47,6 +47,7 @@ namespace Inventaire
         private int _echapTraiteA;
         private bool _majVerifiee;
         private Ecran _actif;
+        private Ecran _racine;
         private Tache _tache;
         private Tache _tachePhoto;
         private int _messageExpire;
@@ -59,6 +60,7 @@ namespace Inventaire
 
         private int _charge = Systeme.Inconnu;
         private bool _secteur;
+        private bool _secteurConnu;
         private int _batterieLue;
 
         public Fenetre(Reglages reglages)
@@ -184,7 +186,10 @@ namespace Inventaire
             // Restes d'une mise a jour precedente : sans consequence, mais
             // autant ne pas laisser trainer un binaire mort sur la carte.
             EcranMaj.Nettoyer();
+            // L'arpege, puis le nom. Le second attend la fin du premier dans
+            // la file des sons : ensemble ils font la signature du demarrage.
             Sons.Jouer(Sons.Demarrage);
+            Sons.Jouer(Sons.Voix);
             Aller(Scan, null);
             // Premier contact : sans lui, l'utilisateur ne saurait pas que le
             // serveur est injoignable avant son premier bip.
@@ -220,6 +225,12 @@ namespace Inventaire
 
         public void Aller(Ecran destination, object argument)
         {
+            // La derniere racine traversee est le point de retour de tous les
+            // sous-ecrans : c'est elle, et non l'accueil, que rend leur fleche.
+            // La retenir ici plutot que dans chaque ecran evite d'avoir a
+            // passer une provenance en argument a chaque navigation.
+            if (destination.EstRacine)
+                _racine = destination;
             if (_actif != null && _actif != destination)
             {
                 _actif.Sortir();
@@ -237,6 +248,16 @@ namespace Inventaire
         }
 
         public Ecran Actif { get { return _actif; } }
+
+        /// <summary>
+        /// Dernier ecran-racine visite : l'accueil, le frigo, les courses ou
+        /// les reglages. C'est la que ramene la fleche retour d'un sous-ecran.
+        /// L'accueil avant toute navigation, donc jamais null.
+        /// </summary>
+        public Ecran Racine
+        {
+            get { return _racine == null ? (Ecran)Scan : _racine; }
+        }
 
         private void Focaliser()
         {
@@ -514,7 +535,6 @@ namespace Inventaire
             _veille.Demarrer();
             _veille.Visible = true;
             _veille.BringToFront();
-            Sons.Jouer(Sons.Balayage);
         }
 
         /// <summary>
@@ -592,16 +612,29 @@ namespace Inventaire
                    + (minutes < 10 ? "0" : "") + minutes;
         }
 
-        /// <summary>Charge de la batterie, relue au plus une fois par quinze secondes.</summary>
+        /// <summary>Charge de la batterie, relue au plus une fois par deux secondes.</summary>
         public int Batterie(out bool secteur)
         {
             secteur = _secteur;
             return _charge;
         }
 
+        /// <summary>
+        /// Releve l'alimentation, et sonne quand le cordon vient d'etre
+        /// branche.
+        ///
+        /// Deux secondes entre deux relectures, et non quinze comme avant : un
+        /// son qui arrive un quart de minute apres le geste n'est plus la
+        /// consequence du geste, c'est un bruit sans cause. L'appel coute
+        /// quelques millisecondes au pilote de batterie, ce qu'un battement de
+        /// quatre-vingt-dix millisecondes absorbe sans se voir.
+        ///
+        /// Le tout premier releve ne sonne jamais : un terminal deja sur son
+        /// socle au lancement n'a pas ete « mis en charge ».
+        /// </summary>
         private void RelireBatterie()
         {
-            if (_batterieLue != 0 && Environment.TickCount - _batterieLue < 15000)
+            if (_batterieLue != 0 && Environment.TickCount - _batterieLue < 2000)
                 return;
             _batterieLue = Environment.TickCount;
             if (_batterieLue == 0)
@@ -610,11 +643,15 @@ namespace Inventaire
             int charge = Systeme.Batterie(out secteur);
             if (charge != _charge || secteur != _secteur)
             {
+                bool branche = secteur && !_secteur && _secteurConnu;
                 _charge = charge;
                 _secteur = secteur;
+                if (branche)
+                    Sons.Jouer(Sons.Branchement);
                 if (_actif != null)
                     _actif.Invalidate();
             }
+            _secteurConnu = true;
         }
 
         private Reponse PingBrut()

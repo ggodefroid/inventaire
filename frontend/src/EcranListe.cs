@@ -38,6 +38,7 @@ namespace Inventaire
         public EcranListe(Fenetre fenetre) : base(fenetre) { }
 
         protected override bool RaccourcisActifs { get { return true; } }
+        public override bool EstRacine { get { return true; } }
 
         public override void Entrer(object argument)
         {

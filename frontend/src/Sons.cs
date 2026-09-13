@@ -37,12 +37,15 @@ namespace Inventaire
         public const int Obturateur = 9;   // photo agrandie
         public const int Balayage = 10;    // suppression d'un lot
         public const int Alerte = 11;      // produit perime
-        private const int Nombre = 12;
+        public const int Voix = 12;        // le programme dit son nom
+        public const int Branchement = 13; // le terminal vient d'etre mis en charge
+        private const int Nombre = 14;
 
         /// <summary>Sons juges indispensables : joues des le niveau 1.</summary>
         private static readonly bool[] Essentiel = {
             true,  true,  true,  true,  true,  true,
             true,  false, false, false, false, true,
+            true,  false,
         };
 
         // ------------------------------------------------------ formes d'onde
@@ -166,6 +169,14 @@ namespace Inventaire
                 case Alerte:
                     return Onde(new double[] { 880, 1175, 880, 1175, 880, 1175 },
                                 new int[] { 90, 90, 90, 90, 90, 160 }, Carre, 0.85);
+                case Voix:
+                    return Voix_();
+                case Branchement:
+                    // Un glissando qui monte, puis deux notes tenues : le son
+                    // suit le geste, et se reconnait sans regarder l'ecran.
+                    return Coller(Balayer(320, 1150, 70, 0.5),
+                                  Onde(new double[] { 1568, 2093 },
+                                       new int[] { 70, 160 }, Sinus, 0.7));
             }
             return Onde(new double[] { 1000 }, new int[] { 50 }, Carre, 0.5);
         }
@@ -265,6 +276,224 @@ namespace Inventaire
             for (int i = 0; i < n; i++)
                 somme[i] = Echantillon(((a[i] - 128) + (b[i] - 128)) / 254.0);
             return Envelopper(somme);
+        }
+
+        // ------------------------------------------------------------- la voix
+
+        /// <summary>Un phoneme : trois formants, une nasalite, une source.</summary>
+        private sealed class Phoneme
+        {
+            public readonly double F1, F2, F3;
+            /// <summary>0 bouche ouverte · 1 voyelle nasale (« in », « an »).</summary>
+            public readonly double Nasal;
+            /// <summary>Part de source glottale, et part de souffle.</summary>
+            public readonly double Voise, Souffle;
+            public readonly int Duree;          // millisecondes
+
+            public Phoneme(double f1, double f2, double f3, double nasal,
+                           double voise, double souffle, int duree)
+            {
+                F1 = f1; F2 = f2; F3 = f3;
+                Nasal = nasal; Voise = voise; Souffle = souffle; Duree = duree;
+            }
+
+            /// <summary>L'occlusion d'une consonne : bouche fermee, rien ne sort.</summary>
+            public bool Muet { get { return Voise == 0 && Souffle == 0; } }
+        }
+
+        /// <summary>
+        /// « Inventaire », prononce au demarrage.
+        ///
+        /// Aucune image de Windows CE n'embarque de synthese vocale, et poser
+        /// un enregistrement a cote du binaire irait contre le principe du
+        /// reste du fichier : tout est fabrique en memoire. La voix l'est donc
+        /// aussi -- douze kilo-octets calcules au premier usage, et rien sur
+        /// la carte.
+        ///
+        /// Le procede est celui de Klatt, reduit a l'os. Une source -- des
+        /// impulsions glottales melangees a du souffle -- traverse trois
+        /// resonateurs a deux poles cales sur les formants du phoneme en
+        /// cours. Ce sont les deux premiers formants qui font la voyelle, le
+        /// troisieme donne le timbre, et un quatrieme resonateur grave, en
+        /// parallele, porte le murmure nasal : sans lui, « Inventaire »
+        /// s'entend « Evatere ».
+        ///
+        /// Le grain suave, lui, tient a quatre nombres et pas un de plus : une
+        /// fondamentale basse qui descend d'un bout a l'autre du mot, un
+        /// vibrato lent qui s'elargit vers la fin, une impulsion glottale tres
+        /// arrondie -- donc pauvre en aigus -- et une bonne dose de souffle.
+        /// Le debit fait le reste : une bonne demi-seconde pour « Inven- »,
+        /// autant pour un « -taire » qui s'eteint au lieu de s'arreter.
+        /// </summary>
+        private static byte[] Voix_()
+        {
+            //            F1    F2    F3  nasal voise souf.   ms
+            Phoneme[] mot = {
+                new Phoneme( 540, 1380, 2450, 0.85, 1.00, 0.30, 225),  // « in »
+                new Phoneme( 330, 1150, 2200, 0.00, 0.75, 0.55, 100),  // « v »
+                new Phoneme( 660, 1040, 2400, 0.85, 1.00, 0.28, 225),  // « an »
+                new Phoneme(   0,    0,    0, 0.00, 0.00, 0.00,  60),  // « t » : l'occlusion
+                new Phoneme(1750, 2600, 3300, 0.00, 0.00, 0.45,  22),  //         puis la detente
+                new Phoneme( 600, 1800, 2560, 0.00, 1.00, 0.30, 200),  // « ai »
+                new Phoneme( 420, 1280, 2320, 0.00, 0.85, 0.45, 300),  // « re », qui s'eteint
+            };
+
+            int total = 0;
+            for (int i = 0; i < mot.Length; i++)
+                total += mot[i].Duree * Echantillonnage / 1000;
+
+            // Trois resonateurs en cascade, un quatrieme en parallele pour le
+            // nez : coefficients et memoire de chacun.
+            double[] a = new double[4], b = new double[4], c = new double[4];
+            double[] z1 = new double[4], z2 = new double[4];
+            double f1 = mot[0].F1, f2 = mot[0].F2, f3 = mot[0].F3, nasal = mot[0].Nasal;
+            double f0 = 0, phase = 0, fluxPrecedent = 0, doux = 0, souffleDoux = 0;
+            int graine = 20050317;
+
+            double[] brut = new double[total];
+            double crete = 0;
+            int position = 0;
+
+            const int Bloc = 64;                // ~6 ms
+
+            for (int p = 0; p < mot.Length; p++)
+            {
+                Phoneme ph = mot[p];
+                int n = ph.Duree * Echantillonnage / 1000;
+                if (ph.Muet)
+                {
+                    // Bouche fermee : rien a ecrire, brut[] vaut deja zero. Les
+                    // resonateurs repartent de zero a la detente, et c'est ce
+                    // silence net -- plus que la detente elle-meme -- qui fait
+                    // entendre une occlusive.
+                    for (int k = 0; k < 4; k++) { z1[k] = 0; z2[k] = 0; }
+                    position += n;
+                    continue;
+                }
+                for (int i = 0; i < n; i++, position++)
+                {
+                    if (i % Bloc == 0)
+                    {
+                        // Recalcule par blocs, et non par echantillon : le
+                        // PXA270 n'a pas d'unite flottante, et trois
+                        // exponentielles par echantillon couteraient plus cher
+                        // que tout le reste du son. Six millisecondes de grain,
+                        // c'est sous le seuil de l'oreille.
+                        double avance = (double)position / total;
+                        f0 = 186.0 - 56.0 * avance
+                             + (1.2 + 3.6 * avance)
+                               * Math.Sin(2.0 * Math.PI * 4.6 * position
+                                          / Echantillonnage);
+                        // Les formants rejoignent leur cible en une vingtaine
+                        // de millisecondes. C'est ce glissement, et non les
+                        // voyelles elles-memes, qui fait entendre un mot
+                        // plutot qu'une suite de sons tenus.
+                        f1 += (ph.F1 - f1) * 0.28;
+                        f2 += (ph.F2 - f2) * 0.28;
+                        f3 += (ph.F3 - f3) * 0.28;
+                        nasal += (ph.Nasal - nasal) * 0.28;
+                        // Un premier formant elargi par la nasalite : le nez
+                        // amortit la bouche autant qu'il ajoute son murmure.
+                        Resonateur(a, b, c, 0, f1, 90.0 + 140.0 * nasal);
+                        Resonateur(a, b, c, 1, f2, 72.0);
+                        Resonateur(a, b, c, 2, f3, 130.0);
+                        Resonateur(a, b, c, 3, 270.0, 150.0);
+                    }
+
+                    // Impulsion de Rosenberg : l'onde que produit reellement
+                    // une glotte, montee lente et fermeture franche. Sa
+                    // derivee tient lieu de source -- c'est aussi ce que fait
+                    // le rayonnement des levres.
+                    phase += f0 / Echantillonnage;
+                    if (phase >= 1.0)
+                        phase -= 1.0;
+                    double flux;
+                    if (phase < 0.42)
+                    {
+                        double u = phase / 0.42;
+                        flux = u * u * (3.0 - 2.0 * u);
+                    }
+                    else if (phase < 0.58)
+                    {
+                        double u = (phase - 0.42) / 0.16;
+                        flux = 1.0 - u * u;
+                    }
+                    else
+                    {
+                        flux = 0.0;
+                    }
+                    double glotte = flux - fluxPrecedent;
+                    fluxPrecedent = flux;
+
+                    // Le souffle : le meme generateur congruentiel que les
+                    // autres sons, adouci pour qu'il murmure au lieu de
+                    // siffler.
+                    graine = graine * 1103515245 + 12345;
+                    double bruit = ((graine >> 16) & 0x7FFF) / 16384.0 - 1.0;
+                    souffleDoux += (bruit - souffleDoux) * 0.4;
+
+                    // Inclinaison spectrale : avec le souffle, c'est elle qui
+                    // separe une voix qui appelle d'une voix qui murmure.
+                    double source = glotte * ph.Voise + souffleDoux * ph.Souffle * 0.12;
+                    doux += (source - doux) * 0.75;
+
+                    double v = doux;
+                    for (int k = 0; k < 3; k++)
+                    {
+                        double y = a[k] * v + b[k] * z1[k] + c[k] * z2[k];
+                        z2[k] = z1[k];
+                        z1[k] = y;
+                        v = y;
+                    }
+                    if (nasal > 0.01)
+                    {
+                        double y = a[3] * doux + b[3] * z1[3] + c[3] * z2[3];
+                        z2[3] = z1[3];
+                        z1[3] = y;
+                        v += y * nasal * 0.6;
+                    }
+
+                    brut[position] = v;
+                    double amplitude = v < 0 ? -v : v;
+                    if (amplitude > crete)
+                        crete = amplitude;
+                }
+            }
+
+            // Le gain d'une cascade de resonateurs depend des formants : plutot
+            // que de le calculer, on mesure la crete et on ramene le tout a
+            // l'echelle du huit bits.
+            double echelle = crete > 0 ? 0.92 / crete : 0.0;
+            int attaque = 30 * Echantillonnage / 1000;
+            int chute = 260 * Echantillonnage / 1000;
+            byte[] donnees = new byte[total];
+            for (int i = 0; i < total; i++)
+            {
+                double enveloppe = i < attaque ? (double)i / attaque : 1.0;
+                if (i > total - chute)
+                {
+                    // Le mot ne se coupe pas, il s'eteint : la courbe est au
+                    // carre, donc longue d'abord et franche a la fin.
+                    double u = (double)(total - i) / chute;
+                    enveloppe *= u * u;
+                }
+                donnees[i] = Echantillon(brut[i] * echelle * enveloppe);
+            }
+            return Envelopper(donnees);
+        }
+
+        /// <summary>
+        /// Coefficients d'un resonateur a deux poles, c'est-a-dire d'un
+        /// formant. Le gain est normalise a l'unite en continu (a = 1 - b - c),
+        /// ce qui permet d'en cascader plusieurs sans que le niveau s'envole.
+        /// </summary>
+        private static void Resonateur(double[] a, double[] b, double[] c, int rang,
+                                       double frequence, double largeur)
+        {
+            double r = Math.Exp(-Math.PI * largeur / Echantillonnage);
+            b[rang] = 2.0 * r * Math.Cos(2.0 * Math.PI * frequence / Echantillonnage);
+            c[rang] = -r * r;
+            a[rang] = 1.0 - b[rang] - c[rang];
         }
 
         private const int TailleEntete = 44;
