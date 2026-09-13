@@ -219,3 +219,13 @@ done <<'FIN'
 3229820129488 7
 FIN
 ```
+
+<!-- navigation -->
+
+---
+
+<div align="center">
+
+← **[📶 2 · Réseau](02-reseau.md)** · **[📚 Index](README.md)** · **[🏠 README](../README.md)** · **[📊 4 · Poste de contrôle](04-vitrine.md)** →
+
+</div>

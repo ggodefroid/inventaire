@@ -1,0 +1,168 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 440" width="1280" height="440" role="img" aria-label="INVENTAIRE — la plateforme AI-Native d'intelligence frigorifique">
+  <defs>
+    <linearGradient id="ciel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#04070d"/>
+      <stop offset="45%"  stop-color="#06101a"/>
+      <stop offset="100%" stop-color="#0a0718"/>
+    </linearGradient>
+    <linearGradient id="neon" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#2ff0c8"/>
+      <stop offset="48%"  stop-color="#49b8ff"/>
+      <stop offset="78%"  stop-color="#8b7cff"/>
+      <stop offset="100%" stop-color="#ff7ad9"/>
+    </linearGradient>
+    <linearGradient id="neon2" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#ff7ad9"/>
+      <stop offset="100%" stop-color="#8b7cff"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#2ff0c8" stop-opacity=".30"/>
+      <stop offset="100%" stop-color="#2ff0c8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="halo2" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#8b7cff" stop-opacity=".28"/>
+      <stop offset="100%" stop-color="#8b7cff" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grille" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#2ff0c8" stroke-opacity=".055" stroke-width="1"/>
+    </pattern>
+    <filter id="flou" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="9"/>
+    </filter>
+    <style>
+      .mono { font-family: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace; }
+      .sans { font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", sans-serif; }
+      @keyframes pulse { 0%,100% { opacity:.35 } 50% { opacity:1 } }
+      @keyframes drift { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-6px) } }
+      .p1 { animation: pulse 3.2s ease-in-out infinite; }
+      .p2 { animation: pulse 3.2s ease-in-out .8s infinite; }
+      .p3 { animation: pulse 3.2s ease-in-out 1.6s infinite; }
+      .p4 { animation: pulse 3.2s ease-in-out 2.4s infinite; }
+      .fl { animation: drift 6s ease-in-out infinite; }
+    </style>
+  </defs>
+
+  <rect width="1280" height="440" fill="url(#ciel)"/>
+  <rect width="1280" height="440" fill="url(#grille)"/>
+  <ellipse cx="205" cy="215" rx="330" ry="260" fill="url(#halo)"/>
+  <ellipse cx="1105" cy="120" rx="300" ry="240" fill="url(#halo2)"/>
+
+  <!-- ————————————————————————————————— le terminal, à gauche -->
+  <g class="fl" transform="translate(92,74)">
+    <rect x="-10" y="-10" width="196" height="300" rx="26" fill="#2ff0c8" opacity=".10" filter="url(#flou)"/>
+    <rect x="0" y="0" width="176" height="280" rx="20" fill="#0b131c" stroke="url(#neon)" stroke-width="2"/>
+    <rect x="14" y="34" width="148" height="196" rx="5" fill="#04070d" stroke="#2ff0c8" stroke-opacity=".3"/>
+    <rect x="14" y="34" width="148" height="15" fill="#0d8043" opacity=".85"/>
+    <text class="mono" x="20" y="45.5" font-size="9" fill="#eafffa">INVENTAIRE</text>
+    <text class="mono" x="147" y="45.5" font-size="9" fill="#eafffa" text-anchor="end">14:32</text>
+    <rect x="22" y="58" width="42" height="42" rx="3" fill="#1b2a36" stroke="#2ff0c8" stroke-opacity=".35"/>
+    <text class="mono" x="43" y="84" font-size="18" fill="#2ff0c8" text-anchor="middle">🍫</text>
+    <text class="mono" x="72" y="68" font-size="9.5" fill="#eafffa">Nutella</text>
+    <text class="mono" x="72" y="80" font-size="7" fill="#8ba4b0">Ferrero · 400 g</text>
+    <rect x="72" y="86" width="13" height="13" rx="2" fill="#ff4d5e"/>
+    <text class="mono" x="78.5" y="96" font-size="9" fill="#fff" text-anchor="middle">E</text>
+    <rect x="89" y="86" width="13" height="13" rx="2" fill="#ff4d5e"/>
+    <text class="mono" x="95.5" y="96" font-size="9" fill="#fff" text-anchor="middle">4</text>
+    <text class="mono" x="148" y="96" font-size="11" fill="#ffb347" text-anchor="end">539</text>
+    <g>
+      <rect x="22" y="110" width="126" height="7" rx="2" fill="#122029"/>
+      <rect x="22" y="110" width="98" height="7" rx="2" fill="#ff4d5e"/>
+      <rect x="22" y="122" width="126" height="7" rx="2" fill="#122029"/>
+      <rect x="22" y="122" width="62" height="7" rx="2" fill="#ffb347"/>
+      <rect x="22" y="134" width="126" height="7" rx="2" fill="#122029"/>
+      <rect x="22" y="134" width="34" height="7" rx="2" fill="#3fe08a"/>
+    </g>
+    <text class="mono" x="22" y="160" font-size="8" fill="#8ba4b0">EN STOCK</text>
+    <text class="mono" x="148" y="160" font-size="12" fill="#2ff0c8" text-anchor="end">5</text>
+    <rect x="22" y="168" width="3" height="11" fill="#3fe08a"/>
+    <text class="mono" x="31" y="177" font-size="7.5" fill="#d6e6ea">jeu 01/10   19 j  ×2</text>
+    <rect x="22" y="184" width="3" height="11" fill="#ffb347"/>
+    <text class="mono" x="31" y="193" font-size="7.5" fill="#d6e6ea">mer 04/11   53 j  ×2</text>
+    <rect x="22" y="204" width="60" height="20" rx="3" fill="#0d8043"/>
+    <text class="mono" x="52" y="217.5" font-size="8.5" fill="#fff" text-anchor="middle">1 AJOUTER</text>
+    <rect x="88" y="204" width="60" height="20" rx="3" fill="#a3202c"/>
+    <text class="mono" x="118" y="217.5" font-size="8.5" fill="#fff" text-anchor="middle">2 RETIRER</text>
+    <rect x="46" y="244" width="84" height="22" rx="11" fill="#111c26" stroke="#2ff0c8" stroke-opacity=".3"/>
+    <circle class="p1" cx="66" cy="255" r="4" fill="#ff4d5e"/>
+    <text class="mono" x="80" y="258.5" font-size="8" fill="#8ba4b0">SCAN</text>
+    <!-- faisceau du lecteur -->
+    <path d="M176 96 L262 80 L262 112 Z" fill="#ff4d5e" opacity=".10"/>
+    <line x1="176" y1="96" x2="262" y2="96" stroke="#ff4d5e" stroke-width="1.4" opacity=".6"/>
+  </g>
+
+  <!-- ————————————————————————————————— le titre -->
+  <g transform="translate(400,0)">
+    <g transform="translate(0,92)">
+      <rect x="0" y="-20" width="188" height="26" rx="13" fill="#2ff0c8" fill-opacity=".10" stroke="#2ff0c8" stroke-opacity=".4"/>
+      <circle class="p1" cx="15" cy="-7" r="4" fill="#2ff0c8"/>
+      <text class="mono" x="27" y="-3" font-size="11.5" fill="#2ff0c8" letter-spacing="1.6">AI-NATIVE · v1.0.0</text>
+    </g>
+
+    <text class="mono" x="0" y="186" font-size="78" font-weight="700" letter-spacing="1" fill="url(#neon)">INVENTAIRE</text>
+    <text class="mono" x="0" y="186" font-size="78" font-weight="700" letter-spacing="1" fill="url(#neon)" opacity=".45" filter="url(#flou)">INVENTAIRE</text>
+
+    <text class="sans" x="3" y="222" font-size="18.5" fill="#d6e6ea" letter-spacing=".3" xml:space="preserve"><tspan>La plateforme </tspan><tspan fill="#2ff0c8" font-weight="600">AI-First</tspan><tspan> d’intelligence frigorifique, </tspan><tspan fill="#8b7cff" font-weight="600">agent-ready</tspan><tspan> et </tspan><tspan fill="#ff7ad9" font-weight="600">edge-deployed</tspan><tspan>.</tspan></text>
+    <text class="mono" x="3" y="248" font-size="12.5" fill="#6c828d" letter-spacing=".8">
+      MCP-native  ·  zero-prompt ingestion  ·  ambient intelligence  ·  Windows CE 5.0
+    </text>
+
+    <!-- pastilles -->
+    <g transform="translate(0,276)">
+      <g>
+        <rect width="148" height="34" rx="17" fill="#0a1220" stroke="#2ff0c8" stroke-opacity=".45"/>
+        <circle class="p1" cx="18" cy="17" r="4.5" fill="#2ff0c8"/>
+        <text class="mono" x="32" y="21.5" font-size="12" fill="#2ff0c8">AI INVENTORY</text>
+      </g>
+      <g transform="translate(160,0)">
+        <rect width="132" height="34" rx="17" fill="#0a1220" stroke="#49b8ff" stroke-opacity=".45"/>
+        <circle class="p2" cx="18" cy="17" r="4.5" fill="#49b8ff"/>
+        <text class="mono" x="32" y="21.5" font-size="12" fill="#49b8ff">MCP SERVER</text>
+      </g>
+      <g transform="translate(304,0)">
+        <rect width="126" height="34" rx="17" fill="#0a1220" stroke="#8b7cff" stroke-opacity=".45"/>
+        <circle class="p3" cx="18" cy="17" r="4.5" fill="#8b7cff"/>
+        <text class="mono" x="32" y="21.5" font-size="12" fill="#8b7cff">EDGE SCAN</text>
+      </g>
+      <g transform="translate(442,0)">
+        <rect width="150" height="34" rx="17" fill="#0a1220" stroke="#ff7ad9" stroke-opacity=".45"/>
+        <circle class="p4" cx="18" cy="17" r="4.5" fill="#ff7ad9"/>
+        <text class="mono" x="32" y="21.5" font-size="12" fill="#ff7ad9">55 AI SAVERS</text>
+      </g>
+    </g>
+
+    <g transform="translate(0,338)">
+      <line x1="0" y1="0" x2="600" y2="0" stroke="url(#neon)" stroke-opacity=".35" stroke-width="1.5"/>
+      <text class="mono" x="0" y="26" font-size="11.5" fill="#6c828d" letter-spacing=".5">
+        180 tests  ·  3 services  ·  10 KPI  ·  7 outils agentiques  ·  0 gramme de gaspillage
+      </text>
+    </g>
+  </g>
+
+  <!-- ————————————————————————————————— le réseau de neurones, à droite -->
+  <g transform="translate(996,66)" opacity=".95">
+    <g stroke="url(#neon)" stroke-opacity=".30" stroke-width="1.2" fill="none">
+      <path d="M24 40 L106 28 M24 40 L106 96 M24 40 L106 164"/>
+      <path d="M24 132 L106 28 M24 132 L106 96 M24 132 L106 164 M24 132 L106 232"/>
+      <path d="M24 224 L106 96 M24 224 L106 164 M24 224 L106 232"/>
+      <path d="M106 28 L190 76 M106 96 L190 76 M106 96 L190 184 M106 164 L190 76 M106 164 L190 184 M106 232 L190 184"/>
+    </g>
+    <g fill="#04070d" stroke="#2ff0c8" stroke-width="2">
+      <circle class="p1" cx="24"  cy="40"  r="9"/>
+      <circle class="p2" cx="24"  cy="132" r="9"/>
+      <circle class="p3" cx="24"  cy="224" r="9"/>
+    </g>
+    <g fill="#04070d" stroke="#49b8ff" stroke-width="2">
+      <circle class="p2" cx="106" cy="28"  r="9"/>
+      <circle class="p3" cx="106" cy="96"  r="9"/>
+      <circle class="p4" cx="106" cy="164" r="9"/>
+      <circle class="p1" cx="106" cy="232" r="9"/>
+    </g>
+    <g fill="#04070d" stroke="url(#neon2)" stroke-width="2.4">
+      <circle class="p3" cx="190" cy="76"  r="11"/>
+      <circle class="p4" cx="190" cy="184" r="11"/>
+    </g>
+    <text class="mono" x="24"  y="272" font-size="9.5" fill="#2ff0c8" text-anchor="middle">SCAN</text>
+    <text class="mono" x="106" y="272" font-size="9.5" fill="#49b8ff" text-anchor="middle">SQLite</text>
+    <text class="mono" x="190" y="272" font-size="9.5" fill="#ff7ad9" text-anchor="middle">LLM</text>
+  </g>
+</svg>

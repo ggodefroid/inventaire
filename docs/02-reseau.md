@@ -132,3 +132,13 @@ loginctl enable-linger "$USER"     # pour qu'il tourne sans session ouverte
 ```
 
 Adaptez le chemin. `journalctl --user -u frigo -f` suit les requêtes.
+
+<!-- navigation -->
+
+---
+
+<div align="center">
+
+← **[📱 1 · Terminal Skorpio](01-terminal-skorpio.md)** · **[📚 Index](README.md)** · **[🏠 README](../README.md)** · **[🔌 3 · API](03-api.md)** →
+
+</div>

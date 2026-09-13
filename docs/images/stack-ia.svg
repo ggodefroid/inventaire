@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 720" width="1180" height="720" role="img" aria-label="La pile AI-Native d'INVENTAIRE, de la capture edge à la couche agentique">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#04070d"/><stop offset="100%" stop-color="#090614"/>
+    </linearGradient>
+    <linearGradient id="l0" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ff4d5e"/><stop offset="100%" stop-color="#ffb347"/>
+    </linearGradient>
+    <linearGradient id="l1" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#3fe08a"/><stop offset="100%" stop-color="#2ff0c8"/>
+    </linearGradient>
+    <linearGradient id="l2" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#2ff0c8"/><stop offset="100%" stop-color="#49b8ff"/>
+    </linearGradient>
+    <linearGradient id="l3" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#49b8ff"/><stop offset="100%" stop-color="#8b7cff"/>
+    </linearGradient>
+    <linearGradient id="l4" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8b7cff"/><stop offset="100%" stop-color="#ff7ad9"/>
+    </linearGradient>
+    <pattern id="g2" width="30" height="30" patternUnits="userSpaceOnUse">
+      <path d="M30 0H0V30" fill="none" stroke="#2ff0c8" stroke-opacity=".05"/>
+    </pattern>
+    <marker id="fleche" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 5 L0 10 z" fill="#2ff0c8" fill-opacity=".8"/>
+    </marker>
+    <style>
+      .mono{font-family:ui-monospace,"SFMono-Regular","JetBrains Mono",Menlo,Consolas,monospace}
+      .sans{font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
+      .t{fill:#eafffa}.d{fill:#8ba4b0}.tt{fill:#6c828d}
+      @keyframes flux{to{stroke-dashoffset:-40}}
+      .fx{stroke-dasharray:5 7;animation:flux 1.6s linear infinite}
+    </style>
+  </defs>
+
+  <rect width="1180" height="720" fill="url(#bg)"/>
+  <rect width="1180" height="720" fill="url(#g2)"/>
+
+  <text class="mono t" x="44" y="52" font-size="21" letter-spacing="3">LA PILE AI-NATIVE</text>
+  <text class="mono tt" x="44" y="74" font-size="12.5" letter-spacing="1.2">
+    de la capture edge à la couche agentique · 5 couches · 3 processus · 1 fichier SQLite
+  </text>
+  <g transform="translate(880,34)">
+    <rect width="256" height="30" rx="15" fill="#0a1220" stroke="#2ff0c8" stroke-opacity=".4"/>
+    <circle cx="16" cy="15" r="4.5" fill="#2ff0c8"/>
+    <text class="mono" x="30" y="19.5" font-size="11.5" fill="#2ff0c8">HUMAN-IN-THE-LOOP BY DESIGN</text>
+  </g>
+
+  <!-- ————————————————— couche 4 : agentique -->
+  <g transform="translate(44,108)">
+    <rect width="1092" height="104" rx="14" fill="#0a0818" stroke="#8b7cff" stroke-opacity=".45"/>
+    <rect width="6" height="104" rx="3" fill="url(#l4)"/>
+    <text class="mono" x="26" y="31" font-size="13.5" fill="#ff7ad9" letter-spacing="2">COUCHE 04 — AGENTIC EXPERIENCE</text>
+    <text class="sans d" x="26" y="52" font-size="12.5">Le modèle interroge le frigo lui-même. Personne ne lui recopie l’inventaire dans son invite.</text>
+    <g transform="translate(26,64)">
+      <rect width="172" height="28" rx="6" fill="#130f26" stroke="#8b7cff" stroke-opacity=".35"/>
+      <text class="mono t" x="14" y="18.5" font-size="11.5">Ollama · LM Studio</text>
+      <g transform="translate(186,0)"><rect width="150" height="28" rx="6" fill="#130f26" stroke="#8b7cff" stroke-opacity=".35"/>
+        <text class="mono t" x="14" y="18.5" font-size="11.5">Claude / client MCP</text></g>
+      <g transform="translate(350,0)"><rect width="196" height="28" rx="6" fill="#130f26" stroke="#8b7cff" stroke-opacity=".35"/>
+        <text class="mono t" x="14" y="18.5" font-size="11.5">3 invites prêtes à l’emploi</text></g>
+      <g transform="translate(560,0)"><rect width="230" height="28" rx="6" fill="#130f26" stroke="#8b7cff" stroke-opacity=".35"/>
+        <text class="mono t" x="14" y="18.5" font-size="11.5">« sauve ce qui va périmer »</text></g>
+    </g>
+  </g>
+  <line class="fx" x1="590" y1="212" x2="590" y2="244" stroke="#8b7cff" stroke-width="2" marker-end="url(#fleche)"/>
+  <text class="mono tt" x="606" y="234" font-size="11">JSON-RPC 2.0 / HTTP</text>
+
+  <!-- ————————————————— couche 3 : MCP -->
+  <g transform="translate(44,248)">
+    <rect width="1092" height="104" rx="14" fill="#070d1a" stroke="#49b8ff" stroke-opacity=".45"/>
+    <rect width="6" height="104" rx="3" fill="url(#l3)"/>
+    <text class="mono" x="26" y="31" font-size="13.5" fill="#49b8ff" letter-spacing="2">COUCHE 03 — MCP ORCHESTRATION PLANE  ·  :8082</text>
+    <text class="sans d" x="26" y="52" font-size="12.5">backend/mcp.py — 7 outils, 3 ressources, 3 invites. Lecture seule, sauf la liste de courses.</text>
+    <g transform="translate(26,64)">
+      <g><rect width="78" height="28" rx="6" fill="#0b1626" stroke="#49b8ff" stroke-opacity=".35"/>
+        <text class="mono t" x="12" y="18.5" font-size="11.5">resume</text></g>
+      <g transform="translate(88,0)"><rect width="96" height="28" rx="6" fill="#0b1626" stroke="#49b8ff" stroke-opacity=".35"/>
+        <text class="mono t" x="12" y="18.5" font-size="11.5">inventaire</text></g>
+      <g transform="translate(194,0)"><rect width="128" height="28" rx="6" fill="#0b1626" stroke="#49b8ff" stroke-opacity=".35"/>
+        <text class="mono t" x="12" y="18.5" font-size="11.5">bientot_perime</text></g>
+      <g transform="translate(332,0)"><rect width="86" height="28" rx="6" fill="#0b1626" stroke="#49b8ff" stroke-opacity=".35"/>
+        <text class="mono t" x="12" y="18.5" font-size="11.5">chercher</text></g>
+      <g transform="translate(428,0)"><rect width="128" height="28" rx="6" fill="#0b1626" stroke="#49b8ff" stroke-opacity=".35"/>
+        <text class="mono t" x="12" y="18.5" font-size="11.5">details_produit</text></g>
+      <g transform="translate(566,0)"><rect width="112" height="28" rx="6" fill="#0b1626" stroke="#49b8ff" stroke-opacity=".35"/>
+        <text class="mono t" x="12" y="18.5" font-size="11.5">liste_courses</text></g>
+      <g transform="translate(688,0)"><rect width="180" height="28" rx="6" fill="#151022" stroke="#ff7ad9" stroke-opacity=".45"/>
+        <circle cx="14" cy="14" r="4" fill="#ff7ad9"/>
+        <text class="mono t" x="26" y="18.5" font-size="11.5">ajouter_aux_courses</text></g>
+      <text class="mono tt" x="880" y="18.5" font-size="11">← le seul qui écrit</text>
+    </g>
+  </g>
+
+  <!-- ————————————————— couche 2 : analytique -->
+  <g transform="translate(44,388)">
+    <rect width="1092" height="104" rx="14" fill="#05100f" stroke="#2ff0c8" stroke-opacity=".45"/>
+    <rect width="6" height="104" rx="3" fill="url(#l2)"/>
+    <text class="mono" x="26" y="31" font-size="13.5" fill="#2ff0c8" letter-spacing="2">COUCHE 02 — COGNITIVE ANALYTICS  ·  :8081</text>
+    <text class="sans d" x="26" y="52" font-size="12.5">backend/vitrine.py — 10 KPI, 5 vues, diffusion WebSocket. mode=ro, query_only, aucun POST.</text>
+    <g transform="translate(26,64)">
+      <g><rect width="132" height="28" rx="6" fill="#08201c" stroke="#2ff0c8" stroke-opacity=".35"/>
+        <text class="mono t" x="14" y="18.5" font-size="11.5">10 KPI temps réel</text></g>
+      <g transform="translate(144,0)"><rect width="146" height="28" rx="6" fill="#08201c" stroke="#2ff0c8" stroke-opacity=".35"/>
+        <text class="mono t" x="14" y="18.5" font-size="11.5">frigo dessiné · 5 vues</text></g>
+      <g transform="translate(302,0)"><rect width="176" height="28" rx="6" fill="#08201c" stroke="#2ff0c8" stroke-opacity=".35"/>
+        <text class="mono t" x="14" y="18.5" font-size="11.5">PRAGMA data_version</text></g>
+      <g transform="translate(490,0)"><rect width="162" height="28" rx="6" fill="#08201c" stroke="#2ff0c8" stroke-opacity=".35"/>
+        <text class="mono t" x="14" y="18.5" font-size="11.5">1 calcul, N abonnés</text></g>
+      <g transform="translate(664,0)"><rect width="196" height="28" rx="6" fill="#08201c" stroke="#2ff0c8" stroke-opacity=".35"/>
+        <text class="mono t" x="14" y="18.5" font-size="11.5">liste de courses partagée</text></g>
+    </g>
+  </g>
+
+  <!-- ————————————————— couche 1 : coeur -->
+  <g transform="translate(44,528)">
+    <rect width="1092" height="104" rx="14" fill="#06110c" stroke="#3fe08a" stroke-opacity=".45"/>
+    <rect width="6" height="104" rx="3" fill="url(#l1)"/>
+    <text class="mono" x="26" y="31" font-size="13.5" fill="#3fe08a" letter-spacing="2">COUCHE 01 — AUTONOMOUS CORE  ·  :8080</text>
+    <text class="sans d" x="26" y="52" font-size="12.5">backend/serveur.py — seul à écrire. SQLite en WAL, proxy HTTPS, BMP palettisé, FEFO.</text>
+    <g transform="translate(26,64)">
+      <g><rect width="120" height="28" rx="6" fill="#0a1a12" stroke="#3fe08a" stroke-opacity=".35"/>
+        <text class="mono t" x="14" y="18.5" font-size="11.5">SQLite · WAL</text></g>
+      <g transform="translate(132,0)"><rect width="168" height="28" rx="6" fill="#0a1a12" stroke="#3fe08a" stroke-opacity=".35"/>
+        <text class="mono t" x="14" y="18.5" font-size="11.5">proxy HTTP → HTTPS</text></g>
+      <g transform="translate(312,0)"><rect width="182" height="28" rx="6" fill="#0a1a12" stroke="#3fe08a" stroke-opacity=".35"/>
+        <text class="mono t" x="14" y="18.5" font-size="11.5">Open Food Facts + cache</text></g>
+      <g transform="translate(506,0)"><rect width="166" height="28" rx="6" fill="#0a1a12" stroke="#3fe08a" stroke-opacity=".35"/>
+        <text class="mono t" x="14" y="18.5" font-size="11.5">photo → BMP 8 bits</text></g>
+      <g transform="translate(684,0)"><rect width="176" height="28" rx="6" fill="#0a1a12" stroke="#3fe08a" stroke-opacity=".35"/>
+        <text class="mono t" x="14" y="18.5" font-size="11.5">clé EAN reconstituée</text></g>
+    </g>
+  </g>
+
+  <!-- ————————————————— couche 0 : edge -->
+  <g transform="translate(44,660)">
+    <rect width="1092" height="44" rx="14" fill="#150a0c" stroke="#ff4d5e" stroke-opacity=".45"/>
+    <rect width="6" height="44" rx="3" fill="url(#l0)"/>
+    <text class="mono" x="26" y="27" font-size="13.5" fill="#ff4d5e" letter-spacing="2">COUCHE 00 — EDGE CAPTURE</text>
+    <text class="sans d" x="330" y="27" font-size="12.5">Datalogic Skorpio · Windows CE 5.0 · PXA270 520 MHz · 240 × 320 · une gâchette, zéro invite</text>
+  </g>
+
+  <!-- flux montant, à gauche -->
+  <g stroke="#2ff0c8" stroke-width="2" fill="none" opacity=".55">
+    <line class="fx" x1="26" y1="656" x2="26" y2="636" marker-end="url(#fleche)"/>
+    <line class="fx" x1="26" y1="524" x2="26" y2="496" marker-end="url(#fleche)"/>
+    <line class="fx" x1="26" y1="384" x2="26" y2="356" marker-end="url(#fleche)"/>
+  </g>
+</svg>

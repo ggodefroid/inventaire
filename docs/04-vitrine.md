@@ -262,6 +262,42 @@ derrière le pare-feu ; seul 8081 sort, et il ne sait pas écrire dans la base.
 
 Cinq vues, accessibles au clavier par les touches `1` à `5`.
 
+<div align="center">
+<img src="images/vitrine/tableau-sombre.png" alt="La vue tableau de bord" width="100%">
+<sub><b>1 · TABLEAU</b> — les dix KPI, formule affichée sous chaque valeur</sub>
+<br><br>
+<img src="images/vitrine/frigo-sombre.png" alt="La vue frigo" width="100%">
+<sub><b>2 · FRIGO</b> — la position d'un article dérive de son code-barres</sub>
+<br><br>
+<img src="images/vitrine/stock-sombre.png" alt="La vue stock" width="100%">
+<sub><b>3 · STOCK</b> — filtrable par échéance, triable par huit critères</sub>
+<br><br>
+<img src="images/vitrine/courses.png" alt="La vue courses" width="100%">
+<sub><b>4 · COURSES</b> — la liste partagée avec le terminal, et les suggestions</sub>
+<br><br>
+<img src="images/vitrine/flux.png" alt="La vue flux" width="100%">
+<sub><b>5 · FLUX</b> — le journal des mouvements, et ce qui presse</sub>
+</div>
+
+<details>
+<summary><b>Les mêmes vues en thème clair, et sur téléphone</b></summary>
+
+<br>
+
+<div align="center">
+<img src="images/vitrine/tableau-clair.png" alt="Le tableau de bord en thème clair" width="100%">
+<br><br>
+<img src="images/vitrine/frigo-clair.png" alt="La vue frigo en thème clair" width="100%">
+<br><br>
+<img src="images/vitrine/stock-clair.png" alt="La vue stock en thème clair" width="100%">
+<br><br>
+<img src="images/vitrine/mobile.png" alt="Le poste de contrôle sur téléphone" width="70%">
+<sub>390 px de large — les cartes passent en colonne, les anneaux rétrécissent</sub>
+</div>
+
+</details>
+
+
 - **Tableau** : le bandeau, les dix KPI, cinq anneaux, la charge du frigo
   reconstituée jour par jour, les mouvements, l'horizon de péremption, les
   heures de scan, la grille jour x heure, les classements, les curiosités.
@@ -309,3 +345,13 @@ La charge du frigo mérite un mot : aucune table ne garde l'historique du
 niveau. On connaît le stock de maintenant et tous les mouvements. Le stock
 d'hier soir, c'est celui de maintenant moins ce qui a bougé depuis, et on
 remonte ainsi de jour en jour.
+
+<!-- navigation -->
+
+---
+
+<div align="center">
+
+← **[🔌 3 · API](03-api.md)** · **[📚 Index](README.md)** · **[🏠 README](../README.md)** · **[🐳 5 · Production](05-production.md)** →
+
+</div>

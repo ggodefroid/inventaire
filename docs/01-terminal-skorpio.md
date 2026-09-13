@@ -210,6 +210,12 @@ réécrit à côté de l'exécutable.
 
 ## 1.6 Usage quotidien
 
+<div align="center">
+<img src="images/terminal-parcours-scan.png" alt="Accueil, fiche produit, saisie de la date, confirmation" width="100%">
+<sub>bip → fiche enrichie → date → rangé</sub>
+</div>
+
+
 ```
 1. gâchette         → la fiche s'affiche : nom, photo, Nutri-Score, NOVA,
                       Eco-Score, témoins nutritionnels, labels, allergènes,
@@ -304,6 +310,41 @@ bientôt » séparé n'aurait rien montré de plus.
   navigateur — bouton `…` sur la ligne du produit.
 - `F1` liste tout le frigo, `F2` revient à l'accueil, `Échap` recule d'un cran.
 
+<details>
+<summary><b>Les 19 écrans, un par un</b></summary>
+
+<br>
+
+<div align="center">
+
+| Accueil | Code saisi | Fiche produit | Photo |
+|:---:|:---:|:---:|:---:|
+| <img src="images/terminal/01-accueil.png" width="150"> | <img src="images/terminal/02-code-saisi.png" width="150"> | <img src="images/terminal/03-article.png" width="150"> | <img src="images/terminal/04-photo-grande.png" width="150"> |
+
+| Retour fiche | Saisie date | Jour +3 | Segment mois |
+|:---:|:---:|:---:|:---:|
+| <img src="images/terminal/05-retour-article.png" width="150"> | <img src="images/terminal/06-saisie.png" width="150"> | <img src="images/terminal/07-jour-plus-3.png" width="150"> | <img src="images/terminal/08-segment-mois.png" width="150"> |
+
+| Mois +1 | Segment quantité | Quantité 2 | Ajouté |
+|:---:|:---:|:---:|:---:|
+| <img src="images/terminal/09-mois-plus-1.png" width="150"> | <img src="images/terminal/10-segment-quantite.png" width="150"> | <img src="images/terminal/11-quantite-2.png" width="150"> | <img src="images/terminal/12-ajoute.png" width="150"> |
+
+| Liste + vignettes | Sélection | Photo depuis la liste | Retour liste |
+|:---:|:---:|:---:|:---:|
+| <img src="images/terminal/13-liste-vignettes.png" width="150"> | <img src="images/terminal/14-liste-selection.png" width="150"> | <img src="images/terminal/15-photo-depuis-liste.png" width="150"> | <img src="images/terminal/16-retour-liste.png" width="150"> |
+
+| Colonne de retrait | Réglages | Produit inconnu | |
+|:---:|:---:|:---:|:---:|
+| <img src="images/terminal/17-colonne-retrait.png" width="150"> | <img src="images/terminal/18-reglages.png" width="150"> | <img src="images/terminal/19-inconnu.png" width="150"> | |
+
+</div>
+
+Ces captures ne sont pas des maquettes : ce sont les mêmes sources C# compilées pour Mono,
+lancées dans un serveur X virtuel en 240 × 320, déroulant un scénario complet contre un vrai
+serveur. `./demarrer.sh --apercu` les régénère.
+
+</details>
+
 ## 1.7 Quand ça ne marche pas
 
 | Symptôme | Cause la plus probable |
@@ -320,3 +361,13 @@ bientôt » séparé n'aurait rien montré de plus.
 | Photo absente, `...` qui reste | le terminal n'a pas su décoder le BMP ; essayez `decodeur_bmp = maison` dans `inventaire.ini` |
 | L'application disparaît au lancement | Compact Framework 2.0 absent (§1.3) |
 | L'application s'arrête en cours de route | lisez `inventaire-erreur.txt`, écrit à côté de l'exécutable : il porte la trace complète |
+
+<!-- navigation -->
+
+---
+
+<div align="center">
+
+**[📚 Index](README.md)** · **[🏠 README](../README.md)** · **[📶 2 · Réseau](02-reseau.md)** →
+
+</div>

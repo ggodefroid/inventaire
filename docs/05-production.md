@@ -299,3 +299,13 @@ remettre en `backend/donnees/inventaire.db`, conteneurs arrêtés, pour restaure
 | Dates et heures décalées | `TZ` absent de `.env` — §5.4 |
 | `/telecharger` dit `disponible=0` | le conteneur `client` a échoué : `docker compose logs client` |
 | Rien en temps réel sur le site | un proxy coupe la WebSocket ; `proxy_read_timeout` dans [docs/04 §4.6](04-vitrine.md#46-publier-sur-internet) |
+
+<!-- navigation -->
+
+---
+
+<div align="center">
+
+← **[📊 4 · Poste de contrôle](04-vitrine.md)** · **[📚 Index](README.md)** · **[🏠 README](../README.md)** · **[🤖 6 · MCP](06-mcp.md)** →
+
+</div>

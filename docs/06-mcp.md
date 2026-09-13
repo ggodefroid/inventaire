@@ -13,6 +13,12 @@ besoin.
 Troisième processus, troisième port. Il lit la même base que les deux autres,
 en lecture seule.
 
+<div align="center">
+<img src="images/stack-ia.svg" alt="La place du serveur MCP dans la pile" width="100%">
+<sub>Le serveur MCP est la <b>couche 03</b> : il lit la base que la couche 01 écrit,
+et n'expose au modèle qu'une seule écriture — la liste de courses.</sub>
+</div>
+
 ## 6.1 Brancher un client
 
 ```json
@@ -137,3 +143,13 @@ d'outils simultanés. Voir [docs/05-production.md](05-production.md).
 | `base absente` au démarrage | lancez `backend/serveur.py` d'abord, il crée la base |
 | `Impossible d'ecrire sur la liste` | le serveur du terminal ne répond pas ; `--serveur` ou `FRIGO_SERVEUR` pointe au mauvais endroit |
 | Le modèle invente des produits | il n'a pas appelé les outils : les invites de §6.3 lui disent de le faire |
+
+<!-- navigation -->
+
+---
+
+<div align="center">
+
+← **[🐳 5 · Production](05-production.md)** · **[📚 Index](README.md)** · **[🏠 README](../README.md)**
+
+</div>
