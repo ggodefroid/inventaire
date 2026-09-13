@@ -32,6 +32,12 @@ namespace Inventaire
     /// vignette part. La liste s'affiche tout de suite, les images arrivent
     /// derriere, et un geste de l'utilisateur passe toujours devant.
     ///
+    /// Rien de tout cela ne touche au fil d'interface. Le telechargement **et
+    /// le decodage** ont lieu sur un couloir de fond reserve aux photos ; ce
+    /// fil-ci ne recoit qu'un Bitmap deja pret, qu'il range et dessine. C'est
+    /// ce qui garde l'appareil reactif : une vignette en vol n'empeche plus un
+    /// bip, et un decodage lent ne fige plus l'ecran.
+    ///
     /// Une photo deja vue ne se redemande jamais : c'est ce qui rend le
     /// defilement de la liste immediat au second passage.
     /// </summary>
@@ -131,9 +137,28 @@ namespace Inventaire
             string code = cle.Substring(separateur + 1);
             _encours = cle;
 
-            bool lance = _fenetre.Appeler("photo", new FonctionReseau(delegate()
+            // Le reglage est lu maintenant, sur le fil d'interface : le fil de
+            // fond ne touchera pas aux reglages pendant que l'ecran Reglages
+            // les modifie peut-etre.
+            bool forcerMaison = _fenetre.Reglages.DecodeurBmp == "maison";
+
+            // L'image decodee voyage par cette variable capturee. Sa
+            // publication est sure : le fil de fond l'affecte avant que Tache
+            // ne pose son drapeau `fini` sous verrou, et l'interface ne la lit
+            // qu'apres avoir vu ce drapeau sous le meme verrou.
+            Bitmap decodee = null;
+
+            bool lance = _fenetre.AppelerPhoto("photo", new FonctionReseau(delegate()
             {
-                return _fenetre.Api.Image(code, taille);
+                Reponse reponse = _fenetre.Api.Image(code, taille);
+                // Le decodage se fait ici, et non dans la suite : une vignette
+                // de 200 pixels relue octet par octet represente quarante mille
+                // ecritures de pixel, soit plusieurs secondes sur un PXA270.
+                // Sur le fil d'interface, l'appareil paraissait fige ; ici,
+                // personne ne l'attend.
+                if (reponse.Joint && reponse.Ok && reponse.Binaire != null)
+                    decodee = Photo.Depuis(reponse.Binaire, forcerMaison);
+                return reponse;
             }), new SuiteReseau(delegate(Reponse reponse)
             {
                 _encours = null;
@@ -148,13 +173,8 @@ namespace Inventaire
                     return;
                 }
                 _tentees[cle] = true;       // le serveur a repondu : plus de reprise
-                if (reponse.Ok && reponse.Binaire != null)
-                {
-                    Bitmap image = Photo.Depuis(reponse.Binaire,
-                        _fenetre.Reglages.DecodeurBmp == "maison");
-                    if (image != null)
-                        Ranger(cle, image);
-                }
+                if (decodee != null)
+                    Ranger(cle, decodee);
             }));
             if (!lance)
             {

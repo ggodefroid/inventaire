@@ -283,6 +283,14 @@ bientôt » séparé n'aurait rien montré de plus.
 - **Les photos apparaissent dans la liste** au fur et à mesure : elles se
   chargent dans les creux, jamais devant une action. Une photo déjà vue ne se
   redemande jamais, donc le second passage est immédiat.
+
+  Deux couloirs réseau, et non un seul : celui de l'utilisateur, celui des
+  photos. Une vignette en vol ne fait donc plus ignorer un bip. Le décodage
+  suit le même chemin — relire un BMP de 200 pixels octet par octet représente
+  quarante mille écritures de pixel, et sur le fil de l'interface l'appareil
+  paraissait figé. Une photo n'est lancée que lorsque le couloir de
+  l'utilisateur est libre : elle ne dispute jamais la bande passante à une
+  requête qu'on attend.
 - **Le programme occupe tout l'écran** et masque la barre des tâches. Elle
   revient quand on quitte par **Réglages → Quitter l'application**. Si le
   programme s'arrête brutalement, la barre peut rester cachée : un *soft reset*

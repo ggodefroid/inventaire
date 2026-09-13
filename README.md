@@ -212,7 +212,10 @@ première mise en route : **[docs/01-terminal-skorpio.md](docs/01-terminal-skorp
   produit, sur un écran qui défile. **`5` montre la photo en grand.**
 - **La liste montre les photos**, avec la note en pastille dans le coin de
   chaque vignette. Elles se chargent dans les creux, jamais devant une action,
-  et une photo déjà vue ne se redemande jamais.
+  et une photo déjà vue ne se redemande jamais. Téléchargement **et** décodage
+  ont lieu sur un fil réservé aux photos : le fil de l'interface ne reçoit
+  qu'une image déjà prête, si bien qu'une vignette en cours n'empêche pas le
+  bip suivant.
 - **Tout se pilote au clavier.** Le terminal se tient d'une main, la gâchette
   sous l'index : atteindre un bouton au stylet oblige à poser l'appareil. Les
   flèches déplacent un curseur — marqué d'un anneau noir — entre les actions,
@@ -284,7 +287,7 @@ courses** que le terminal et le site alimentent tous les deux. Détail complet :
 
 ```
   ┌──────────────────────────────────────────────────────────────────┐
-  │ INVENTAIRE  poste de contrôle   ⌕ chercher...   ☾ ● R7  23:04:11 │
+  │ INVENTAIRE  poste de contrôle   ⌕ chercher...      ☾   23:04:11 │
   ├──────────────────────────────────────────────────────────────────┤
   │ TABLEAU   FRIGO   STOCK ⑦   COURSES ③   FLUX                     │
   ├──────────────────────────────────────────────────────────────────┤
@@ -552,7 +555,7 @@ frontend/
     Fenetre.cs                fenêtre unique, routage clavier, appels réseau
     Ecran*.cs                 les sept écrans
     Sons.cs                   synthèse des effets sonores en mémoire
-    CachePhotos.cs            photos gardées en RAM, chargées dans les creux
+    CachePhotos.cs            photos en RAM, chargées et décodées hors interface
     Effet.cs                  socle des économiseurs : sinus entiers, blocs
     Veille.cs                 le moteur : une table de 55, tirée sans remise
     VeilleClassiques.cs       pluie, étoiles, logo, Mystify, tuyaux
@@ -569,7 +572,9 @@ frontend/
   refs/wince/                 .asmmeta de surface d'API Windows CE
   build/compiler.sh           compilation en trois passes
   tools/                      extraction des assemblies, contrôles
-tests/                        177 tests
+    PlancheVeille.cs          rend les 55 économiseurs hors terminal
+    MesurePhoto.cs            chronomètre les deux chemins de décodage
+tests/                        180 tests
 docs/                         mise en service, réseau, API, site public,
                               production, MCP
 .github/workflows/ci.yml      tests sur 3.11 à 3.14, puis la pile complète
@@ -594,7 +599,7 @@ Ce qui a été **exécuté et vérifié** :
 
 - le serveur de bout en bout, y compris contre l'API publique d'Open Food
   Facts en direct ;
-- 177 tests : fusion des lots, sorties FEFO, normalisation des fiches, couche
+- 180 tests : fusion des lots, sorties FEFO, normalisation des fiches, couche
   HTTP, contrat de clés C# ↔ Python, liste de courses, tout le site public, et
   le protocole MCP ;
 - la conversion des photos : BMP palettisé 8 bits aux dimensions exactes

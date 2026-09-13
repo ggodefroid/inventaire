@@ -276,6 +276,13 @@ Cinq vues, accessibles au clavier par les touches `1` à `5`.
   code-barres, et les suggestions proposent ce qui manque ou périme.
 - **Flux** : le journal des mouvements, et ce qui presse.
 
+L'en-tête ne montre **pas** l'état de la liaison. Il l'a montré, puis on l'a
+retiré : la WebSocket tombe, le repli HTTP la remplace, elle se reconnecte avec
+un délai qui double à chaque échec, et le numéro de révision garantit qu'aucun
+mouvement ne manque. Un témoin n'apprenait donc rien à qui regarde son frigo,
+sinon à s'inquiéter d'un incident déjà réparé. L'état reste suivi dans la page :
+c'est lui qui décide s'il faut se resynchroniser.
+
 Un bouton dans l'en-tête bascule entre **thème sombre et thème clair**. Le
 sombre reste le défaut — la page est un afficheur — mais une liste de courses
 se lit en plein soleil, et c'est exactement le moment où un fond noir ne se lit

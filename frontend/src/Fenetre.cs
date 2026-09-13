@@ -48,6 +48,7 @@ namespace Inventaire
         private bool _majVerifiee;
         private Ecran _actif;
         private Tache _tache;
+        private Tache _tachePhoto;
         private int _messageExpire;
         private int _battements;
 
@@ -382,6 +383,54 @@ namespace Inventaire
             return true;
         }
 
+        /// <summary>
+        /// Meme chose, sur un couloir reserve aux photos.
+        ///
+        /// Il y avait un seul creneau, et une vignette en vol faisait donc
+        /// ignorer le bip suivant : l'appareil paraissait mort une demi-seconde
+        /// sur deux des que la liste affichait des photos. Les deux couloirs
+        /// sont independants -- une photo ne bloque plus rien.
+        ///
+        /// Une photo n'est mise en route que lorsque le couloir de
+        /// l'utilisateur est libre (voir Battement) : elle ne peut donc jamais
+        /// disputer la bande passante a une requete qu'on attend. Deux
+        /// connexions au plus, ce qu'une pile reseau de 2005 encaisse sans
+        /// peine ; c'etait sept connexions simultanees qu'il fallait eviter.
+        /// </summary>
+        public bool AppelerPhoto(string libelle, FonctionReseau travail, SuiteReseau suite)
+        {
+            if (_tachePhoto != null)
+                return false;
+            _tachePhoto = new Tache(libelle, travail, suite);
+            _tachePhoto.Demarrer();
+            return true;
+        }
+
+        /// <summary>Recolte une tache finie. Rend true si elle l'etait.</summary>
+        private bool Recolter(ref Tache emplacement, bool rafraichir)
+        {
+            Tache tache = emplacement;
+            if (tache == null || !tache.Fini)
+                return false;
+            emplacement = null;
+            Reponse reponse = tache.Resultat;
+            Retenir(reponse);
+            try
+            {
+                if (tache.Suite != null)
+                    tache.Suite(reponse);
+            }
+            catch (Exception ex)
+            {
+                Dire("erreur interne : " + ex.Message, false);
+            }
+            if (rafraichir)
+                Focaliser();
+            if (_actif != null)
+                _actif.Invalidate();
+            return true;
+        }
+
         private void Battement(object envoyeur, EventArgs e)
         {
             _battements++;
@@ -396,26 +445,13 @@ namespace Inventaire
             RelireBatterie();
             Sons.Battement();
 
-            if (_tache != null && _tache.Fini)
-            {
-                Tache terminee = _tache;
-                _tache = null;
-                Reponse reponse = terminee.Resultat;
-                Retenir(reponse);
-                try
-                {
-                    if (terminee.Suite != null)
-                        terminee.Suite(reponse);
-                }
-                catch (Exception ex)
-                {
-                    Dire("erreur interne : " + ex.Message, false);
-                }
-                Focaliser();
-                if (_actif != null)
-                    _actif.Invalidate();
+            // Une photo arrivee est rangee tout de suite : c'est une
+            // affectation et un dessin, rien qui puisse retarder la suite. Le
+            // decodage, lui, a eu lieu sur le fil de fond.
+            Recolter(ref _tachePhoto, false);
+
+            if (Recolter(ref _tache, true))
                 return;
-            }
 
             if (_messageExpire != 0 && Environment.TickCount > _messageExpire)
             {
@@ -427,9 +463,11 @@ namespace Inventaire
 
             GererVeille();
 
-            // Les photos se chargent dans les creux : jamais devant une action
-            // de l'utilisateur, toujours des que le reseau est libre -- et
-            // jamais pendant la veille, ou personne ne les regarde.
+            // Les photos se chargent dans les creux : on n'en demarre aucune
+            // tant qu'une requete de l'utilisateur est en vol, et jamais
+            // pendant la veille, ou personne ne les regarde. Celle qui est
+            // deja partie, elle, poursuit sur son propre couloir sans gener
+            // le bip suivant.
             if (_tache == null && !_endormi)
                 Photos.Travailler();
             // Le sablier s'anime, et l'horloge du bandeau avance de minute en

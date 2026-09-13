@@ -192,19 +192,6 @@ body{
 .recherche kbd{position:absolute;right:9px;min-width:19px;height:19px;display:grid;place-items:center;
   border:1px solid var(--trait);border-radius:5px;font:11.5px/1 var(--mono);color:var(--doux)}
 
-.etat-liaison{display:flex;align-items:center;gap:7px;flex:none;
-  font:11.5px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--doux)}
-.etat-liaison .point{width:7px;height:7px;border-radius:50%;background:var(--tres-doux);
-  box-shadow:0 0 0 0 rgba(47,240,200,.5)}
-.etat-liaison.vivant .point{background:var(--cyan);animation:pouls 2.4s ease-out infinite}
-.etat-liaison.mort .point{background:var(--rouge)}
-.etat-liaison.vivant{color:var(--cyan)}
-.etat-liaison.mort{color:var(--rouge)}
-.revision{color:var(--tres-doux);letter-spacing:.08em}
-@keyframes pouls{
-  0%{box-shadow:0 0 0 0 rgba(47,240,200,.55)}
-  70%{box-shadow:0 0 0 9px rgba(47,240,200,0)}
-  100%{box-shadow:0 0 0 0 rgba(47,240,200,0)}
 }
 
 .horloge{flex:none;font:600 16px/1 var(--mono);letter-spacing:.09em;color:var(--vif);
@@ -566,9 +553,8 @@ mark{background:rgba(47,240,200,.22);color:var(--vif);border-radius:2px;padding:
   :root{--entete:52px}
   .entete{flex-wrap:wrap;height:auto;padding:9px 12px;gap:9px}
   .marque{order:1}
-  .horloge{order:2;margin-left:auto;font-size:14.5px}
-  .etat-liaison{order:3}
-  .etat-liaison .etat-texte{display:none}
+  .theme{order:2;margin-left:auto}
+  .horloge{order:3;font-size:14.5px}
   .recherche{order:4;flex-basis:100%;max-width:none}
   .onglets{top:0;position:fixed;bottom:0;top:auto;left:0;right:0;height:54px;padding:0;
     border-top:1px solid var(--trait);border-bottom:0;justify-content:space-around}

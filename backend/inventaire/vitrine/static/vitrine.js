@@ -331,7 +331,7 @@ function brancher() {
 
   socket.onopen = () => {
     tentatives = 0;
-    liaison(true, 'liaison');
+    liaison(true);
   };
   socket.onmessage = ev => {
     let message;
@@ -343,8 +343,8 @@ function brancher() {
     }
     appliquer(message);
   };
-  socket.onclose = () => { liaison(false, 'coupé'); replier(); };
-  socket.onerror = () => { liaison(false, 'erreur'); };
+  socket.onclose = () => { liaison(false); replier(); };
+  socket.onerror = () => { liaison(false); };
 }
 
 function replier() {
@@ -361,12 +361,11 @@ async function rattraper() {
   } catch (e) { /* hors ligne : on reessaiera au prochain battement */ }
 }
 
-function liaison(vivant, texte) {
+/* La liaison n'est plus affichee : elle n'apprend rien a qui regarde son
+   frigo, et le repli HTTP rattrape tout seul une WebSocket coupee. L'etat
+   reste suivi -- le numero de revision decide s'il faut se resynchroniser. */
+function liaison(vivant) {
   S.vivant = vivant;
-  const el = $('#liaison');
-  el.classList.toggle('vivant', vivant);
-  el.classList.toggle('mort', !vivant);
-  $('.etat-texte', el).textContent = texte;
 }
 
 /* ------------------------------------------------------------------ rendu */
@@ -374,7 +373,6 @@ function liaison(vivant, texte) {
 function appliquer(etat) {
   S.etat = etat;
   S.revision = etat.revision || 0;
-  $('#revision').textContent = 'r' + S.revision;
   $('#horloge').textContent = etat.horloge.heure;
   rendreTout();
   if (S.code) remplirFiche(S.code);
