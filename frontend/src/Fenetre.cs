@@ -293,7 +293,7 @@ namespace Inventaire
                 _echapTraiteA = Environment.TickCount;
                 if (_echapTraiteA == 0)
                     _echapTraiteA = 1;
-                Reveiller(true);
+                Reveiller();
                 if (_actif.Touche(Keys.Escape))
                     e.Handled = true;
                 return;
@@ -310,7 +310,7 @@ namespace Inventaire
                 return;
             // Une touche reveille et agit : une gachette ne doit pas demander
             // deux tirs, le premier pour reveiller et le second pour scanner.
-            Reveiller(true);
+            Reveiller();
             // On ne touche surtout pas a _puits.Text ici : ecrire dans un
             // TextBox depuis son propre gestionnaire de touche peut avaler le
             // WM_CHAR qui suit. Le texte ne s'accumule pas de toute facon,
@@ -332,7 +332,7 @@ namespace Inventaire
             // -- le code 27 -- et reveillerait l'appareil au moment meme ou
             // elle vient de l'endormir.
             if (e.KeyChar >= ' ')
-                Reveiller(false);   // sans son : une rafale en produirait treize
+                Reveiller();
             if (_actif == null)
             {
                 e.Handled = true;
@@ -540,8 +540,17 @@ namespace Inventaire
         /// <summary>
         /// Sort de veille. Appelee a chaque entree, qu'on dorme ou non : c'est
         /// elle qui tient le compteur d'inactivite.
+        ///
+        /// Le programme dit son nom en reparaissant, comme au demarrage. La
+        /// sortie de veille est le seul moment ou l'ecran change sans qu'on
+        /// l'ait demande : apres une heure sur un plan de travail, entendre
+        /// « Inventaire » vaut mieux qu'un bip qui ne dit rien.
+        ///
+        /// Un seul son par reveil, quel que soit le geste : la garde sur
+        /// _endormi passe une fois, et la rafale d'un code-barres n'en
+        /// declenche donc pas treize.
         /// </summary>
-        public void Reveiller(bool sonner)
+        public void Reveiller()
         {
             Activite();
             if (!_endormi)
@@ -554,8 +563,7 @@ namespace Inventaire
                 _actif.Invalidate();
             }
             Focaliser();
-            if (sonner)
-                Sons.Jouer(Sons.Navigation);
+            Sons.Jouer(Sons.Voix);
         }
 
         /// <summary>
@@ -565,7 +573,7 @@ namespace Inventaire
         /// </summary>
         private void VeilleTouchee(object envoyeur, MouseEventArgs e)
         {
-            Reveiller(true);
+            Reveiller();
         }
 
         /// <summary>Cale calendrier et horloge sur le serveur.</summary>
@@ -621,7 +629,7 @@ namespace Inventaire
 
         /// <summary>
         /// Releve l'alimentation, et sonne quand le cordon vient d'etre
-        /// branche.
+        /// branche ou retire -- deux carillons, l'un le miroir de l'autre.
         ///
         /// Deux secondes entre deux relectures, et non quinze comme avant : un
         /// son qui arrive un quart de minute apres le geste n'est plus la
@@ -629,8 +637,8 @@ namespace Inventaire
         /// quelques millisecondes au pilote de batterie, ce qu'un battement de
         /// quatre-vingt-dix millisecondes absorbe sans se voir.
         ///
-        /// Le tout premier releve ne sonne jamais : un terminal deja sur son
-        /// socle au lancement n'a pas ete « mis en charge ».
+        /// Le tout premier releve ne sonne jamais : l'etat du cordon au
+        /// lancement est une constatation, pas un changement.
         /// </summary>
         private void RelireBatterie()
         {
@@ -643,11 +651,11 @@ namespace Inventaire
             int charge = Systeme.Batterie(out secteur);
             if (charge != _charge || secteur != _secteur)
             {
-                bool branche = secteur && !_secteur && _secteurConnu;
+                bool bascule = secteur != _secteur && _secteurConnu;
                 _charge = charge;
                 _secteur = secteur;
-                if (branche)
-                    Sons.Jouer(Sons.Branchement);
+                if (bascule)
+                    Sons.Jouer(secteur ? Sons.Branchement : Sons.Debranchement);
                 if (_actif != null)
                     _actif.Invalidate();
             }

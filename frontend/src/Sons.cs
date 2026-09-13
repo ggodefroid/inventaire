@@ -38,14 +38,15 @@ namespace Inventaire
         public const int Balayage = 10;    // suppression d'un lot
         public const int Alerte = 11;      // produit perime
         public const int Voix = 12;        // le programme dit son nom
-        public const int Branchement = 13; // le terminal vient d'etre mis en charge
-        private const int Nombre = 14;
+        public const int Branchement = 13; // le cordon vient d'etre mis
+        public const int Debranchement = 14; // ... et de partir
+        private const int Nombre = 15;
 
         /// <summary>Sons juges indispensables : joues des le niveau 1.</summary>
         private static readonly bool[] Essentiel = {
             true,  true,  true,  true,  true,  true,
             true,  false, false, false, false, true,
-            true,  false,
+            true,  false, false,
         };
 
         // ------------------------------------------------------ formes d'onde
@@ -177,6 +178,13 @@ namespace Inventaire
                     return Coller(Balayer(320, 1150, 70, 0.5),
                                   Onde(new double[] { 1568, 2093 },
                                        new int[] { 70, 160 }, Sinus, 0.7));
+                case Debranchement:
+                    // Le miroir exact du precedent, joue a l'envers : deux
+                    // notes qui descendent puis un glissando qui tombe. Brancher
+                    // et debrancher ne peuvent pas se confondre a l'oreille.
+                    return Coller(Onde(new double[] { 2093, 1568 },
+                                       new int[] { 160, 70 }, Sinus, 0.7),
+                                  Balayer(1150, 320, 70, 0.5));
             }
             return Onde(new double[] { 1000 }, new int[] { 50 }, Carre, 0.5);
         }
